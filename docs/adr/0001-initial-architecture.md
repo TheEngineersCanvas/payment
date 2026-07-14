@@ -1,10 +1,13 @@
 # ADR-0001: @tec/payment — Initial Architecture
 
-> **Status:** PROPOSED — awaiting founder approval before implementation.
-> **Date:** 2026-07-14
+> **Status:** REVISION 2 — design-review revisions applied; awaiting founder re-approval.
+> **Date:** 2026-07-14 (original); 2026-07-14 (revised)
 > **Author:** Principal Software Architect
 > **Supersedes:** —
+> **Superseded by:** —
 > **Target version:** 0.1.0 (initial scaffold)
+> **Changelog:**
+> - **Rev. 2** — Trimmed v1 scope (no circuit breaker, rate limiter, middleware, stub providers). Money is now a branded integer with a validating factory. Added `ProviderFactory` and registry. Simplified event bus to synchronous fire-and-forget. Added Security, Performance, Concurrency, and API Stability sections. Added phased implementation roadmap. Documented v2 provider package split.
 
 ---
 
@@ -58,31 +61,47 @@ The Engineers Canvas operates multiple products that will each need to accept pa
 
 ## 2. Scope & Non-Goals
 
+> **Rev. 2 — trimmed per design review.** v1 is intentionally minimal. Anything in the "Reserved for v2" column is *not* built now, but the architecture is shaped to accept it without breaking changes.
+
 ### In scope (v1)
 
-- Initialize, verify, refund, list, and fetch payments.
-- Webhook reception, validation, and normalized event parsing.
-- One first-class provider: **Paystack**.
-- Reference adapters (stub-only) for OPay, Flutterwave, Stripe, Moniepoint.
-- Event bus, error hierarchy, typed config, structured logging, health check.
+- Initialize, verify, refund, fetch, and list payments.
+- Webhook reception, signature validation, and normalized event parsing.
+- One first-class provider: **Paystack** (embedded in this package).
+- Typed error hierarchy with discriminated `Result<T, E>`.
+- Branded `Money`, `PaymentReference`, `Currency`, `Provider` types.
+- Structured JSON-line logging via injectable `Logger` port.
+- In-process pub/sub event bus (minimal).
+- `ProviderFactory` for clean provider construction and test substitution.
+- Health check.
 
-### Out of scope (v1)
+### Out of scope for v1 (explicitly NOT built now)
 
-- Recurring billing / subscriptions.
-- Disputes / chargebacks workflow.
-- Multi-currency conversion (FX).
-- Payouts to third parties.
-- Provider-side dashboard / analytics.
-- Built-in persistence (DB / Redis / queue).
-- Built-in HTTP server (apps bring their own framework).
-- Browser bundle (Node + edge runtimes only).
+| Feature | Status | Reason |
+|---------|--------|--------|
+| Circuit breaker | Reserved v2 | YAGNI — re-evaluate when an outage actually happens. |
+| Rate limiter | Reserved v2 | Provider-side limits; SDK-side shaping is app's job. |
+| Middleware pipeline | Reserved v2 | Use cases already have clear seams; interceptor pattern adds indirection. |
+| Pluggable retry policy | Built, **but minimal** | One-shot retry on idempotent GETs only. Pluggable backoff in v2. |
+| Stub provider folders (Stripe, Flutterwave, OPay, Moniepoint) | **Removed** | Empty folders rot. Add when a real adapter is started. |
+| Persistence adapters | Reserved v2 | SDK is stateless. Apps own their DB. |
+| Idempotency store | Reserved v2 | Provider `reference` IS the idempotency key for v1. |
+| Subscriptions / recurring | Reserved v2 | Out of v1 product scope. |
+| Disputes / chargebacks | Reserved v2 | Out of v1 product scope. |
+| Multi-currency FX | Reserved v2 | Out of v1 product scope. |
+| Browser bundle | Out permanently | Node + edge runtimes only. |
+| Built-in HTTP server | Out permanently | Apps bring their own framework. |
 
 ### Future (v2+)
 
-- Subscriptions, invoices, transfers.
+- Subscriptions, invoices, transfers, payouts.
+- Separate provider packages: `@tec/payment-paystack`, `@tec/payment-stripe`, etc. (see §18.1).
 - Optional persistence adapter (`@tec/payment-drizzle`, `@tec/payment-prisma`).
 - Idempotency store adapter.
-- Pluggable retry policy.
+- Middleware/interceptor pipeline.
+- Pluggable retry policy with backoff strategies.
+- Parallel event handler execution.
+- Circuit breaker, rate limiter (if real outages prove the need).
 
 ---
 
@@ -215,7 +234,7 @@ The Engineers Canvas operates multiple products that will each need to accept pa
 │   │   │   ├── refund-service.ts
 │   │   │   └── webhook-service.ts
 │   │   ├── event-bus/
-│   │   │   ├── in-memory-event-bus.ts
+│   │   │   ├── in-memory-event-bus.ts    # minimal pub/sub (v1)
 │   │   │   └── subscription.ts
 │   │   └── use-cases/*.test.ts
 │   │
@@ -226,23 +245,15 @@ The Engineers Canvas operates multiple products that will each need to accept pa
 │   │   │   ├── circuit-breaker.ts
 │   │   │   └── rate-limiter.ts
 │   │   ├── providers/
-│   │   │   ├── paystack/
-│   │   │   │   ├── paystack-adapter.ts
-│   │   │   │   ├── paystack-types.ts
-│   │   │   │   ├── paystack-mapper.ts     # provider DTO → domain
-│   │   │   │   ├── paystack-webhook.ts
-│   │   │   │   └── paystack-adapter.test.ts
-│   │   │   ├── stripe/                   # stub v1, full v2
-│   │   │   │   └── stripe-adapter.ts
-│   │   │   ├── flutterwave/              # stub
-│   │   │   │   └── flutterwave-adapter.ts
-│   │   │   ├── opay/                     # stub
-│   │   │   │   └── opay-adapter.ts
-│   │   │   └── moniepoint/               # stub
-│   │   │       └── moniepoint-adapter.ts
+│   │   │   ├── provider-factory.ts       # constructs the right PaymentProvider
+│   │   │   └── paystack/
+│   │   │       ├── paystack-adapter.ts
+│   │   │       ├── paystack-types.ts
+│   │   │       ├── paystack-mapper.ts     # provider DTO → domain
+│   │   │       ├── paystack-webhook.ts
+│   │   │       └── paystack-adapter.test.ts
 │   │   ├── webhook/
-│   │   │   ├── hmac-webhook-verifier.ts
-│   │   │   └── webhook-router.ts
+│   │   │   └── hmac-webhook-verifier.ts  # default verifier for HMAC-SHA512 providers
 │   │   ├── logging/
 │   │   │   ├── console-logger.ts
 │   │   │   └── noop-logger.ts
@@ -250,8 +261,10 @@ The Engineers Canvas operates multiple products that will each need to accept pa
 │   │   │   └── system-clock.ts
 │   │   ├── id/
 │   │   │   └── ulid-id-generator.ts
-│   │   └── persistence/                  # v2 — placeholder dir
-│   │       └── README.md
+│   │   ├── event-bus/
+│   │   │   └── in-memory-event-bus.ts    # moved to application/event-bus
+│   │   └── http/
+│   │       └── fetch-http-client.ts
 │   │
 │   ├── shared/
 │   │   ├── result/
@@ -423,21 +436,42 @@ Internal API categories:
 
 ### 7.2 `Money` (value object)
 
+> **Rev. 2 — branded integer + factory** (per design review). The previous draft used `number` directly. This invited the wrong things in (floats, negatives, NaN, strings from JSON parsed at the boundary). The fix is a **branded integer primitive** constructed only through a validating factory.
+
 ```ts
-// Money is always stored in MINOR units (kobo, cents, etc.) as BigInt-safe number.
+// Brand prevents `Money` from accepting a raw `number` from the wild.
+type MinorUnits = number & { readonly __brand: 'MinorUnits' };
+
+// The ONLY way to construct MinorUnits. Throws ValidationError on bad input.
+function MinorUnits(value: number): MinorUnits {
+  if (!Number.isFinite(value))           throw new ValidationError('amount_not_finite', { value });
+  if (!Number.isInteger(value))          throw new ValidationError('amount_not_integer', { value });
+  if (value < 0)                          throw new ValidationError('amount_negative', { value });
+  // 2^53 - 1 = 9_007_199_254_740_991 minor units ≈ $90 trillion.
+  if (value > Number.MAX_SAFE_INTEGER)    throw new ValidationError('amount_overflow', { value });
+  return value as MinorUnits;
+}
+
 interface Money {
-  readonly amount: number;     // integer, minor units, > 0
-  readonly currency: Currency; // ISO 4217
+  readonly amount: MinorUnits;     // integer, minor units, >= 0 (zero allowed for free trials)
+  readonly currency: Currency;      // ISO 4217
+}
+
+// Money's factory: never trust the caller.
+function Money(input: { amount: number; currency: string }): Money {
+  return { amount: MinorUnits(input.amount), currency: Currency(input.currency) };
 }
 ```
 
-**Why BigInt-safe `number` and not `bigint`?**
+**Why integer + factory, not `bigint`?**
 
-- Paystack/Flutterwave/OPay/Stripe all use numbers (or strings) for minor units in their public APIs.
-- `bigint` breaks JSON serialization without a custom reviver, hurting webhook payloads and logs.
-- We enforce `integer` and `> 0` at the boundary; BigInt is overkill given the range (max 2^53-1 minor units ≈ $90T).
+- `bigint` breaks `JSON.stringify` without a custom reviver, breaking webhooks and logs.
+- We enforce integer at the boundary; the precision range of `number` (2^53) covers any realistic transaction.
+- The *real* problem wasn't precision — it was **untrusted values entering the system**. The factory makes that impossible.
 
-**Why minor units?** Floating-point money is a CV-generating machine. Major units would force `Decimal.js` in the public type.
+**Why minor units?** Floating-point money is a CV-generating machine. Storing in major units would force `Decimal.js` into the public type.
+
+**Why allow zero?** Free trials, 100%-off promo codes, $0 auth holds. Refunds must reject zero.
 
 ### 7.3 `Currency`
 
@@ -715,17 +749,21 @@ interface PaymentProvider {
 
 ## 9. Infrastructure Layer
 
+> **Rev. 2 — trimmed.** Circuit breaker, rate limiter, and middleware pipeline are **removed for v1**. Retry is reduced to a single, simple rule (idempotent GET only).
+
 ### 9.1 HTTP client
 
 `FetchHttpClient` is the default implementation. It wraps native `fetch` (Node 18+, Bun, edge). It enforces:
 
 - Absolute URL construction from a base URL set per provider.
 - Timeout via `AbortController` (configurable, default 30s).
-- One automatic retry for idempotent verbs (GET, HEAD) on 5xx / network errors, with exponential backoff (default 250ms, 1s, 4s).
-- No retry on POST/PATCH/DELETE (callers opt-in via `Idempotency-Key` header).
+- **One** automatic retry for idempotent verbs (GET, HEAD) on 5xx / network errors. No exponential backoff ladder in v1 — fixed 500ms delay. (Pluggable backoff in v2.)
+- No retry on POST/PATCH/DELETE.
 - Correlation ID header propagation (`X-TEC-Correlation-Id`).
 
 The `HttpClient` port lets apps substitute `undici`, `axios`, or a mock for tests.
+
+**Circuit breaker, rate limiter, retry-with-jitter: explicitly NOT in v1.** When a real outage happens, we'll add them behind the existing `HttpClient` port without changing any consumer.
 
 ### 9.2 Provider adapter pattern
 
@@ -773,11 +811,20 @@ Signature verification **always** uses the **raw body** bytes — adapters must 
 
 ### 9.7 Event bus
 
-`InMemoryEventBus` (sync, single-process). v2 may add `RedisEventBus` / `NatsEventBus` adapters. Subscribers are typed:
+> **Rev. 2 — minimal pub/sub.** No queues, no backpressure, no parallel execution. Just `emit` / `on` / `off`.
+
+`InMemoryEventBus` is a tiny synchronous pub/sub. Subscribers are typed:
 
 ```ts
 bus.on('payment.succeeded', async (event) => { /* fully typed */ });
+const off = bus.off; // returns Unsubscribe
 ```
+
+- **Synchronous dispatch, fire-and-forget.** `emit()` returns after scheduling; it does not await handlers.
+- **Errors are caught, logged, and swallowed.** A misbehaving handler cannot break the chain.
+- **In-process only.** Multi-process / cross-service eventing is an app concern (use Redis, NATS, etc.).
+
+A v2 may add an `OutboxEventBus` for transactional outbox patterns, but the contract (`on` / `off` / `emit`) stays the same.
 
 ---
 
@@ -812,6 +859,34 @@ interface ProviderCapabilities {
 ```
 
 Apps can query `client.providers.get('paystack').capabilities` to render the right UI.
+
+### 10.3 `ProviderFactory` — provider construction, isolated
+
+> **Rev. 2 — added per design review.** The first draft let `createPaymentClient` construct providers inline. That's fine for one provider; it's wrong for the future. Provider construction must be its own component so it's (a) testable, (b) extensible without touching client code, and (c) the single seam where v2 provider packages plug in.
+
+```ts
+// application/ports/provider-factory.ts
+interface ProviderFactory {
+  create(id: Provider, config: ProviderConfig, deps: ProviderDeps): PaymentProvider;
+  supported(): ReadonlyArray<Provider>;
+}
+
+// internal registry — populated in v1 with paystack; later by package self-registration.
+const registry = new Map<Provider, ProviderFactoryEntry>();
+
+export function registerProvider(id: Provider, entry: ProviderFactoryEntry): void;
+export function resolveProviderFactory(id: Provider): ProviderFactory;
+```
+
+**Why a registry, not a switch statement?**
+
+- A `switch` makes adding providers require editing a closed file. The registry is **open** — a v2 `@tec/payment-stripe` package calls `registerProvider('stripe', ...)` at import time. Core never has to know.
+- It keeps `createPaymentClient` ignorant of provider details.
+- It makes "what providers are available?" a queryable fact.
+
+**v1 default registration:** Paystack only, registered when the package is imported. v2 packages register themselves.
+
+**Provider dependencies (`ProviderDeps`):** `HttpClient`, `Logger`, `Clock`, `IdGenerator`, `EventBus`, `WebhookVerifier` — the same ports every use case gets. Providers are peers of use cases in the dependency graph.
 
 ---
 
@@ -995,6 +1070,8 @@ sequenceDiagram
 
 ## 12. Event System
 
+> **Rev. 2 — minimal.** v1 ships a tiny synchronous pub/sub. Async dispatch, parallel execution, and outbox patterns are reserved for v2.
+
 ### 12.1 Type taxonomy
 
 | Event | Source | Payload |
@@ -1013,7 +1090,7 @@ sequenceDiagram
 
 ```ts
 interface EventBus {
-  emit<T extends PaymentEventType>(type: T, event: PaymentEventOf<T>): Promise<void>;
+  emit(type: PaymentEventType, event: PaymentEvent): void;
   on<T extends PaymentEventType>(type: T, handler: Handler<T>): Unsubscribe;
   onAny(handler: (event: PaymentEvent) => void): Unsubscribe;
 }
@@ -1021,15 +1098,25 @@ interface EventBus {
 type Unsubscribe = () => void;
 ```
 
-- Handlers are async. The bus awaits each handler in registration order; exceptions are caught, logged, and **do not** break the chain (failure isolation).
-- Handlers run in series by default. v2 may add a `parallel` option.
-- The bus is **fire-and-forget** from the caller's perspective — `emit()` resolves when handlers are scheduled, not when they finish.
+- **Synchronous dispatch.** `emit()` schedules handlers and returns immediately. It does **not** `await` them.
+- **Errors are caught, logged, swallowed.** A misbehaving handler cannot break the chain.
+- **In-process only.** Multi-process / cross-service eventing is an app concern.
+- **No backpressure, no queues, no parallel fan-out** in v1. Add `OutboxEventBus` / `ParallelEventBus` in v2 without changing this signature.
 
-### 12.3 Why an event system?
+### 12.3 Why an event system (even a tiny one)?
 
 - Apps need to **react** to payment state changes (send email, update DB, notify Slack).
-- Without a bus, apps duplicate "what to do when X happens" in every webhook handler, refund flow, etc.
-- The bus is the seam where the SDK's *technical* events become the *application's* business events.
+- Without a bus, apps duplicate "what to do when X happens" in every webhook handler and refund flow.
+- The bus is the seam where the SDK's *technical* events become the *application's* business events. A 30-line pub/sub is enough to start.
+
+### 12.4 What v1 deliberately does NOT do
+
+| Feature | Status | When added |
+|---------|--------|------------|
+| Async / awaited handlers | Out | v2 — if a real consumer needs backpressure. |
+| Parallel fan-out | Out | v2 — if a real consumer has slow handlers. |
+| Outbox / transactional events | Out | v2 — when a persistence adapter appears. |
+| Cross-process bus (Redis/NATS) | Out | App concern. SDK is single-process. |
 
 ---
 
@@ -1298,6 +1385,10 @@ Real provider payloads (anonymized) committed to `tests/fixtures/`. Updating a f
 
 ### 18.1 Adding a new provider
 
+> **Rev. 2 — v2 will split providers into separate npm packages.** v1 keeps Paystack inside `@tec/payment` because shipping two packages now is overhead for one consumer. The split is a packaging change only — the runtime architecture already supports it.
+
+#### v1 (single package)
+
 ```
 src/infrastructure/providers/<name>/
   ├── <name>-adapter.ts
@@ -1309,12 +1400,31 @@ src/infrastructure/providers/<name>/
 
 Then:
 
-1. Register the provider in `src/infrastructure/providers/index.ts` (internal registry).
+1. Register the provider in the `ProviderFactory` registry (see §10.3).
 2. Add the literal to the `Provider` branded type.
-3. Add the `TEC_PAYMENT_<NAME>_SECRET_KEY` env var to the `fromEnv()` factory.
-4. Add a stub to `tests/contract/provider-contract.spec.ts` so the contract test is automatically applied.
+3. Add the `TEC_PAYMENT_<NAME>_SECRET_KEY` env var to `fromEnv()`.
+4. The contract test (`tests/contract/provider-contract.spec.ts`) automatically exercises it.
 
 **Zero changes to:** `domain/`, `application/`, `public-api/`, or any application code.
+
+#### v2 (separate packages)
+
+```
+packages/
+  payment/                       # @tec/payment           (core)
+  payment-paystack/              # @tec/payment-paystack  (provider)
+  payment-stripe/                # @tec/payment-stripe    (provider, future)
+  payment-flutterwave/           # @tec/payment-flutterwave (provider, future)
+```
+
+Each provider package:
+
+- Depends on `@tec/payment` as a peer.
+- Self-registers on import: `import '@tec/payment-paystack'; // calls registerProvider(...)`.
+- Has its own version cadence — Paystack API changes don't force a `@tec/payment` release.
+- Carries its own integration tests against the real sandbox.
+
+**Migration path:** v1.0 ships Paystack embedded. v1.1 moves Paystack to `@tec/payment-paystack`. The re-export from `@tec/payment` is kept for one major cycle, then removed. The contract test moves with the provider.
 
 ### 18.2 Adding a new use case
 
@@ -1433,6 +1543,8 @@ There is no v0 to migrate from. This ADR defines the initial architecture. Futur
 
 ## 22. Documentation Plan
 
+> **Rev. 2 — expanded per design review.** Missing security, performance, concurrency, and stability docs are now first-class deliverables, not afterthoughts.
+
 | File | Audience | Contents |
 |------|----------|----------|
 | `docs/architecture.md` | Architects, new contributors | This ADR (compiled) |
@@ -1441,6 +1553,10 @@ There is no v0 to migrate from. This ADR defines the initial architecture. Futur
 | `docs/provider-guide.md` | Adapter authors | Per-provider quirks (Paystack sandbox keys, Stripe API version pinning, etc.) |
 | `docs/migration-guide.md` | App devs | v0→v1, v1→v2, provider-swap recipes |
 | `docs/versioning.md` | Contributors | Semver policy, deprecation process |
+| `docs/security.md` | All | Threat model, secret handling, webhook verification, replay defense (§26) |
+| `docs/performance.md` | Capacity planners | Latency budgets, memory profile, bundle size (§27) |
+| `docs/concurrency.md` | App devs | Concurrency model, hazards, multi-client usage (§28) |
+| `docs/api-stability.md` | Integrators | What "stable" means, deprecation process (§29) |
 | `docs/adr/0001-initial-architecture.md` | All | This document (source) |
 | `docs/adr/template.md` | Contributors | Template for new ADRs |
 | `README.md` | Everyone | Quickstart, install, basic example |
@@ -1448,91 +1564,289 @@ There is no v0 to migrate from. This ADR defines the initial architecture. Futur
 
 ---
 
-## 23. Open Decisions (require founder input)
+## 23. Resolved Decisions
 
-These decisions materially affect the design. Listed with options and recommendation.
+> **Rev. 2 — decisions are now locked.** Adopted from the open-questions list in the previous revision, resolved in light of the design review.
 
-### 23.1 HTTP client
-
-- **A.** Native `fetch` only (Node 18+, Bun, edge). Zero deps.
-- **B.** `undici` (fastest, but Node-only).
-- **C.** Pluggable with `fetch` default; allow `undici` injection.
-
-**Recommendation: C.** Pluggable, default `fetch`. Apps on edge can keep fetch; Node apps can opt into `undici` for throughput.
-
-### 23.2 Validation library
-
-- **A.** Hand-rolled, no deps. (Cheapest, most code.)
-- **B.** Zod. (Largest ecosystem, biggest bundle hit.)
-- **C.** Valibot. (Tiny bundle, Zod-like API.)
-- **D.** ArkType. (TS-first, fast.)
-
-**Recommendation: A internally, with optional `Validator` port so consumers can plug in Zod if they want.** Public API stays untyped-from-runtime-library; internals stay slim.
-
-### 23.3 Event bus model
-
-- **A.** Sync in-process bus, fire-and-forget, errors logged.
-- **B.** Async with backpressure + handler queues.
-- **C.** RxJS / observable stream.
-
-**Recommendation: A for v1.** B and C can be added in v2 without breaking the `EventBus` port.
-
-### 23.4 Idempotency
-
-- **A.** No built-in idempotency store. Caller passes `reference` (which IS the idempotency key for most providers).
-- **B.** Optional `IdempotencyStore` port (Redis, etc.) for v2.
-
-**Recommendation: A for v1.** Paystack/Flutterwave/OPay/Stripe all key on `reference` / `Idempotency-Key` already. v2 may add a store.
-
-### 23.5 Persistence
-
-- **A.** Stateless SDK. App owns DB.
-- **B.** Optional `PaymentRepository` port in v2 (Drizzle/Prisma adapters).
-
-**Recommendation: A.** Keeps blast radius small. Repository interface is reserved as a v2 deliverable.
-
-### 23.6 Build pipeline
-
-- **A.** `tsup` (zero config, ESM + CJS + dts).
-- **B.** `unbuild` (used by Nuxt, more flexible).
-- **C.** `tsc` only (slow, no bundling).
-
-**Recommendation: A (`tsup`).** Standard for modern TS SDKs.
-
-### 23.7 Test runner
-
-- **A.** `vitest`.
-- **B.** `bun test`.
-- **C.** `node --test`.
-
-**Recommendation: A (`vitest`).** Best DX, runs under Bun *and* Node, `msw` works seamlessly.
+| # | Decision | Choice | Rationale |
+|---|----------|--------|-----------|
+| 23.1 | HTTP client | **Pluggable port, `fetch` default** | Apps on edge keep `fetch`; Node apps can inject `undici` for throughput. |
+| 23.2 | Validation library | **Hand-rolled, no public dep** | Smallest install footprint. A `Validator` port lets apps bring Zod if they want. |
+| 23.3 | Event bus | **Synchronous, in-process, fire-and-forget** | Smallest correct pub/sub. Failure isolation via try/catch. |
+| 23.4 | Idempotency | **Caller-owned `reference`; no store in v1** | Paystack/Flutterwave/OPay/Stripe all key on `reference` already. |
+| 23.5 | Persistence | **Stateless SDK** | Apps own their DB. Repository port reserved for v2. |
+| 23.6 | Build pipeline | **`tsup`** | Zero-config ESM + CJS + dts. Industry standard for SDKs. |
+| 23.7 | Test runner | **`vitest`** | ESM-native, runs under Bun and Node, `msw` works seamlessly. |
+| 23.8 | Provider packaging | **Embedded in v1; separate packages in v2** | Ship one now; split when a second provider is real. |
+| 23.9 | Retry policy | **One fixed 500ms retry on idempotent GETs only** | Simple, predictable. Pluggable backoff in v2. |
+| 23.10 | Stub provider folders | **None** | Empty folders rot. Add when a real adapter is started. |
 
 ---
 
 ## 24. Definition of Done for ADR-0001
 
+> **Rev. 2 — checklist reflects revised scope.**
+
 This ADR is **approved** when:
 
-- [ ] Founder confirms scope (§2).
-- [ ] Founder resolves open decisions in §23.
-- [ ] Folder structure (§4) is accepted.
-- [ ] Provider contract (§10) is accepted.
-- [ ] Event taxonomy (§12) is accepted.
-- [ ] Error hierarchy (§13) is accepted.
+- [ ] Founder confirms trimmed v1 scope (§2).
+- [ ] Founder accepts resolved decisions (§23).
+- [ ] Folder structure (§4) is accepted — including no stub provider folders.
+- [ ] `Money` + `MinorUnits` factory design (§7.2) is accepted.
+- [ ] `ProviderFactory` + registry design (§10.3) is accepted.
+- [ ] Minimal event bus (§12) is accepted.
+- [ ] v2 package-split migration plan (§18.1) is accepted.
+- [ ] Security, performance, concurrency, stability docs (§26–§29) are accepted.
+- [ ] Phased implementation roadmap (§25) is accepted.
 
 Once approved, this document becomes the **immutable blueprint**. Any deviation during implementation must produce a new ADR.
 
 ---
 
-## 25. Suggested Next Steps (after approval)
+## 25. Phased Implementation Roadmap
 
-1. Initialize folder structure with empty `package.json` (`name: "@tec/payment"`).
-2. Implement `domain/` (pure types only, no logic).
-3. Implement `application/ports/` (interfaces only).
-4. Implement `shared/result/` and `shared/validation/`.
-5. Implement `application/use-cases/` against mocked providers.
-6. Implement `infrastructure/http/fetch-http-client.ts`.
-7. Implement `infrastructure/providers/paystack/` end-to-end.
-8. Implement `public-api/createPaymentClient`.
-9. Wire up `tests/contract/provider-contract.spec.ts`.
-10. Reach 80% coverage; cut a `0.1.0` release.
+> **Rev. 2 — phased per design review.** Each phase ships a usable artifact, not a half-built library. A phase is "done" only when its acceptance criteria pass and the docs are updated.
+
+### Phase 1 — Skeleton & invariants *(target: 1–2 days)*
+
+**Build:**
+- Folder structure (full §4 layout).
+- `package.json` renamed to `@tec/payment`; engines pinned to `node >= 18`.
+- `tsup.config.ts`, `vitest.config.ts`, `eslint.config.js` with `eslint-plugin-boundaries` enforcing §3.2 layer rules.
+- `domain/money/` with `Money`, `MinorUnits`, `Currency`, factory.
+- `domain/reference/payment-reference.ts` with factory.
+- `domain/provider/provider.ts` branded type.
+- `shared/result/result.ts`.
+- `errors/` full hierarchy (all classes, no logic yet).
+- `public-api/index.ts` exporting only the types and error classes.
+
+**Acceptance:** `bun run check-types` passes. `vitest` runs the empty suite. Importing `@tec/payment` is a no-op (no side effects on import).
+
+### Phase 2 — Paystack end-to-end *(target: 1 week)*
+
+**Build:**
+- `application/ports/payment-provider.ts`, `http-client.ts`, `logger.ts`, `clock.ts`, `id-generator.ts`, `event-bus.ts`, `webhook-verifier.ts`, `provider-factory.ts`.
+- `application/use-cases/`: `initializePayment`, `verifyPayment`, `fetchPayment`, `listPayments`.
+- `application/services/payment-service.ts` façade.
+- `infrastructure/http/fetch-http-client.ts` (one fixed 500ms retry on idempotent GETs).
+- `infrastructure/logging/{console-logger,noop-logger}.ts`.
+- `infrastructure/clock/system-clock.ts`, `infrastructure/id/ulid-id-generator.ts`.
+- `infrastructure/event-bus/in-memory-event-bus.ts`.
+- `infrastructure/providers/paystack/` (full adapter, mapper, webhook verifier).
+- `public-api/createPaymentClient.ts` (factory, `fromEnv` convenience).
+- `tests/contract/provider-contract.spec.ts` against Paystack fixtures.
+- `tests/integration/paystack.spec.ts` against Paystack sandbox (skipped if no key).
+
+**Acceptance:** All seven use cases work against Paystack sandbox. Contract test green. ≥ 80% coverage on `domain/` and `application/`. The admission portal can be wired up against this version.
+
+### Phase 3 — Webhooks, verification, refunds *(target: 3–4 days)*
+
+**Build:**
+- `application/use-cases/{parse-webhook,refund-payment}.ts`.
+- `application/services/{refund-service,webhook-service}.ts`.
+- Webhook raw-body contract documented in `public-api/`.
+- `docs/security.md` (see §26).
+- `docs/public-api.md` with full examples.
+- Sample Next.js / Hono / Express integration snippets in `docs/integrations/`.
+
+**Acceptance:** An end-to-end test posts a real-looking webhook to a small test server, signature is validated, and the resulting `payment.succeeded` event reaches a test handler. Refund happy path is green.
+
+### Phase 4 — Playground, docs, polish *(target: 3–5 days)*
+
+**Build:**
+- `examples/` directory with one minimal runnable per framework (Next.js, Hono, Express).
+- `docs/architecture.md` (this file, rendered).
+- `docs/extension-guide.md`.
+- `docs/provider-guide.md`.
+- `docs/migration-guide.md` (initial: how to swap providers later).
+- `docs/versioning.md`.
+- `docs/security.md`, `docs/performance.md`, `docs/concurrency.md`, `docs/api-stability.md`.
+- CHANGELOG with conventional commits since day 1.
+- Cut `0.1.0` release.
+
+**Acceptance:** `npm pack` produces a clean tarball. README quickstart works on a fresh clone. Docs answer 8/10 questions a new adapter author would have.
+
+### Phase 5+ (post-v1, never in parallel with v1)
+
+- `0.2.0` — Pluggable retry, idempotency store, second provider.
+- `0.3.0` — Provider package split (`@tec/payment-paystack`).
+- `1.0.0` — API freeze, full SemVer commitment begins.
+- `1.x` — Subscriptions, transfers, persistence adapters, middleware pipeline.
+
+---
+
+## 26. Security Considerations
+
+> **Added per design review.** A payment SDK is a security-critical dependency. This section enumerates the threats and the SDK's defenses so adapter authors and application teams know what is — and is not — the SDK's responsibility.
+
+### 26.1 Secret management
+
+- **Threat:** Secret keys leaked via logs, error messages, or accidental serialization.
+- **Defense:**
+  - `Logger` port auto-redacts keys whose names match `secret|authorization|password|signature|api[_-]?key|card|pan|cvv` (case-insensitive).
+  - Error messages from the SDK never echo raw secrets. `ProviderError.providerCode` carries only the provider's own error code, not its message body, when the message might echo input.
+  - Secrets are read from configuration at construction time. They are not accepted as method arguments.
+  - `package.json` declares `secretKey` as `string`; the README and type JSDoc warn to read from `process.env` or a secret manager.
+- **Not the SDK's job:** key rotation, secret storage, KMS integration. Apps bring their own.
+
+### 26.2 Webhook verification
+
+- **Threat:** Forged webhooks that trigger state changes (e.g. marking an unpaid order as paid).
+- **Defense:**
+  - Signature is verified against the **raw request body** — never against a re-serialized JSON. The public API requires `rawBody: string | Buffer`.
+  - HMAC comparison is **constant-time** (`crypto.timingSafeEqual`) to prevent timing attacks.
+  - The signature is checked **before** the body is parsed. A bad signature returns 401 with no body.
+  - Webhook timestamps (when the provider includes them — e.g. Stripe's `t=`) are rejected if they drift more than 5 minutes from `Clock.now()`. This prevents replay attacks.
+  - Provider event `id` is exposed in the parsed `WebhookEvent.id` so apps can dedupe replays at the application layer.
+- **Not the SDK's job:** storing event ids to dedupe across processes. The SDK emits the id; the app persists and checks.
+
+### 26.3 Replay attack prevention (initialize)
+
+- **Threat:** An attacker re-submits an `initialize` request with a captured body, double-charging the user.
+- **Defense:** The `reference` is app-supplied and unique-per-attempt. Paystack/Flutterwave/OPay/Stripe all reject duplicate references at the provider side. v1 documents this contract loudly; v2 may add a `reference` uniqueness pre-check via an injected store.
+- **App's job:** generate references that are globally unique and unpredictable enough (e.g. `ULID`, not `order-1`).
+
+### 26.4 Sensitive data in errors
+
+- **Threat:** Stack traces, raw provider responses, or partial card numbers exposed to end users.
+- **Defense:**
+  - All `PaymentError` subclasses are safe to return to a logged-in user with their `httpStatus` as the response code and `message` as a short, generic string. The full details live in `meta` and the underlying `cause`.
+  - `internalError` (SDK bug) returns a `correlationId` only. The original error is logged but not exposed.
+  - `rawResponse` inside `PaymentAttempt` is exposed for debugging but flagged `internal: true` in the type's JSDoc. Apps must not serialize it to end users.
+
+### 26.5 Transport security
+
+- **Threat:** MITM, downgrade.
+- **Defense:** All provider HTTP traffic is HTTPS-only. The `HttpClient` rejects `http://` URLs at the boundary. Certificate validation is delegated to Node/Bun (no custom CA bundle handling in v1).
+
+### 26.6 Dependency hygiene
+
+- **Threat:** Supply chain attack via a transitive dep.
+- **Defense:**
+  - v1 runtime dependencies: **zero** (uses only Node built-ins: `crypto`, `fetch`, `URL`, `AbortController`).
+  - `npm audit` is part of CI. A failing audit is a release blocker.
+  - `pnpm-lock.yaml` / `bun.lock` is committed; `npm ci` reproducible installs.
+  - `package.json` declares `engines: { node: ">=18" }` to avoid surprises on EOL Node.
+
+### 26.7 What the SDK does NOT defend against
+
+| Threat | Why out of scope | Mitigation owner |
+|--------|------------------|------------------|
+| Compromised app server | SDK cannot defend a host that's already lost. | App / infra. |
+| Provider-side breach | Out of our control. | App monitors `webhook.received` vs `payment.succeeded` mismatches. |
+| SSRF via webhook URL config | App does not configure webhook URLs. | n/a in v1. |
+| Replay across processes | SDK is single-process. | App persists `webhook.id`. |
+| Phishing of customer | Not a system threat. | UX / education. |
+
+---
+
+## 27. Performance Characteristics
+
+> **Added per design review.** Apps need to know what they're getting. This section documents the *measured-or-projected* cost of common operations so capacity planning is possible without running a benchmark.
+
+### 27.1 Latency budget (per call, Paystack)
+
+| Operation | Cold start | Warm | Notes |
+|-----------|-----------:|-----:|-------|
+| `payments.initialize` | ~5ms SDK overhead + 1 RTT | ~1ms SDK + 1 RTT | Paystack RTT is the dominant term (~200–500ms in-region). |
+| `payments.verify` | ~3ms + 1 RTT | ~1ms + 1 RTT | |
+| `payments.fetch` | ~2ms + 1 RTT | ~1ms + 1 RTT | |
+| `refunds.create` | ~5ms + 1 RTT | ~1ms + 1 RTT | |
+| `webhooks.receive` | ~0.5ms (no I/O) | ~0.1ms | Pure CPU: HMAC + parse. |
+
+SDK overhead is dwarfed by provider RTT. Optimizing SDK internals below 1ms is not a v1 priority.
+
+### 27.2 Memory
+
+- **Zero retained state per call** beyond the returned `Payment` / `Refund` / `WebhookEvent`. After the promise resolves, the SDK holds no references.
+- **Event handlers** registered on the bus are retained for the lifetime of the client. Each handler is one closure + one map entry. A thousand handlers ≈ 200KB.
+- **HTTP client** has no connection pool of its own in v1; we use the platform's `fetch` defaults (Node 18+ has keep-alive by default; Bun does too).
+
+### 27.3 Concurrency
+
+- All public methods are safe to call concurrently. There is no shared mutable state in the SDK.
+- The event bus dispatches in registration order; a slow handler delays subsequent handlers. (See §28.)
+
+### 27.4 Bundle size
+
+- v1 ships **zero runtime dependencies**. The published tarball is < 30 KB minified, < 10 KB gzipped (target).
+- Type definitions add ~15 KB to a consumer's `node_modules/@types` but do not affect runtime.
+
+### 27.5 What is NOT optimized in v1
+
+- Cold start (we don't tree-shake unused providers yet — only one exists).
+- Webhook parsing throughput (we don't need to; webhooks are 1/sec at most).
+- Memory pooling for high-throughput servers. If we hit 1k payments/sec we'll revisit; for v1 we don't.
+
+---
+
+## 28. Concurrency Model
+
+> **Added per design review.** Apps need a clear mental model of what is safe to do in parallel.
+
+### 28.1 Guarantees
+
+- **Stateless core.** Every public method is a pure function of its arguments + injected dependencies. There is no module-level mutable state in `domain/` or `application/`.
+- **Safe concurrent use.** Two concurrent `initialize` calls with different references produce two independent `Payment` objects. No internal lock is needed.
+- **Event bus is single-threaded.** Because Node is single-threaded, `emit()` is atomic with respect to handler registration. A handler that calls `bus.on()` mid-dispatch will only see its handler on the *next* event, not the current one. This is the same model as Node's `EventEmitter`.
+
+### 28.2 Hazards and rules
+
+| Hazard | Rule |
+|--------|------|
+| Mutating a returned `Payment` | All entities are `Readonly<...>` at the type level. The runtime does not deep-freeze in v1; treat them as immutable by convention. |
+| Calling `bus.on()` from inside a handler | Allowed. The new handler does not fire for the in-flight event. |
+| Calling `bus.emit()` from inside a handler | Allowed. The new event is queued and dispatched **after** the current handler returns (synchronous recursion guard). |
+| Re-entrancy via `await` inside a handler | Handlers are `async`. `emit()` does not await them. So `emit()` returns before any handler runs. A handler can `await` anything; nothing in the SDK depends on handler completion. |
+| Multiple clients | Apps may construct multiple `PaymentClient` instances (e.g. one per tenant). Each has its own bus, logger, providers. No global registry in v1. |
+
+### 28.3 What v1 does NOT provide
+
+- **Cross-process events.** If you run multiple Node processes, the in-memory bus is per-process. Use Redis/NATS at the app level.
+- **Transactional outbox.** "Emit event AND write to DB atomically" is an app concern. v2 may add an `OutboxEventBus` that writes to a queue table inside the same transaction as the DB write.
+- **Handler backpressure.** A slow handler blocks subsequent handlers on the same event. v2 will add bounded concurrency or a `setImmediate`-based fan-out.
+
+---
+
+## 29. API Stability Guarantees
+
+> **Added per design review.** "Stable" must mean something concrete. This section defines what consumers can rely on, version by version.
+
+### 29.1 From `0.1.0` to `1.0.0`
+
+- **No stability guarantees.** MINOR versions may break. Pin to exact versions in `package.json` (`"@tec/payment": "0.1.3"`, not `"^0.1.3"`).
+- A `CHANGELOG.md` entry is required for every change.
+- Breaking changes within `0.x` will be announced **at least one minor version ahead** when feasible (e.g. deprecate in `0.4.0`, remove in `0.5.0`).
+
+### 29.2 From `1.0.0` onward
+
+- **Public API is SemVer-stable.** Anything exported from `@tec/payment` follows strict SemVer.
+- **Internal modules are not.** Paths under `src/` not re-exported by `public-api/index.ts` may change without notice. The published tarball only contains `dist/`, so this is enforced by packaging.
+- **Provider packages are independently versioned.** A Paystack API change releases `@tec/payment-paystack@x.y.z`; it does not force a `@tec/payment` release.
+
+### 29.3 What "stable" means in concrete terms
+
+| Aspect | Guarantee from 1.0.0 |
+|--------|----------------------|
+| Public type signatures | Breaking change = MAJOR bump. Adding an optional field = MINOR. |
+| Error class hierarchy | New subclasses = MINOR. Renaming / removing = MAJOR. Switching `Result` to throw or vice versa = MAJOR. |
+| `Result<T, E>` shape | `ok` and `error` are frozen. |
+| `EventBus` interface | Adding a method = MINOR. Removing = MAJOR. Changing semantics of existing = MAJOR. |
+| `Logger` interface | Same as `EventBus`. |
+| Provider contract | Adding a method = MINOR (adapters must implement; apps unaffected unless they type-narrow). Removing = MAJOR. |
+| Default config values | Changing a default that affects runtime behavior (e.g. timeout) = MINOR with a CHANGELOG note. |
+| Default provider (Paystack) | Stable until Paystack publishes a breaking API change. v2 package split moves this guarantee to `@tec/payment-paystack`. |
+
+### 29.4 Deprecation process
+
+1. Mark the export `@deprecated` with a JSDoc tag pointing to the replacement.
+2. Add a CHANGELOG entry under "Deprecations".
+3. Keep the export functional for at least **one subsequent MAJOR version** (typically 6+ months).
+4. Remove in the next MAJOR.
+
+### 29.5 What is explicitly NOT promised
+
+- Performance numbers in §27. They are targets, not SLAs.
+- The set of supported Node versions forever. We follow Node's LTS schedule; dropping an EOL version is a MINOR bump.
+- The exact shape of `meta` on errors. New keys may be added; apps should not destructure `meta` exhaustively.
+- Internal `src/` paths. Do not import from them.
