@@ -30,3 +30,9 @@ export { RefundError } from "../errors/refund-error.js";
 export { InternalError } from "../errors/internal-error.js";
 
 export { ErrorCode, ErrorCategory } from "../errors/error-codes.js";
+
+export { createPaymentClient } from "./client.js";
+export type { PaymentClient } from "../application/payment-client.js";
+export type { PaymentClientConfig } from "../application/client-config.js";
+export type { Logger } from "../application/ports/logger.js";
+export type { EventBus, EventSubscription } from "../application/ports/event-bus.js";

@@ -1,4 +1,4 @@
-import type { Currency } from "./currency.js";
+import { Currency } from "./currency.js";
 import { ValidationError } from "../../errors/validation-error.js";
 
 declare const MinorUnitsSymbol: unique symbol;
@@ -29,6 +29,6 @@ export interface Money {
 export function Money(input: { amount: number; currency: string }): Money {
   return {
     amount: MinorUnits(input.amount),
-    currency: input.currency as Currency,
+    currency: Currency(input.currency),
   };
 }

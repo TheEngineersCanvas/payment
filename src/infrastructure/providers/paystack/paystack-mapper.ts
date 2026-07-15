@@ -1,0 +1,237 @@
+import { Payment } from "../../../domain/payment/payment.js";
+import type { PaymentRequest } from "../../../domain/payment/payment-request.js";
+import type { PaymentAttempt } from "../../../domain/payment/payment-attempt.js";
+import type { Customer } from "../../../domain/customer/customer.js";
+import type { PaymentStatus } from "../../../domain/payment/payment-status.js";
+import { Provider } from "../../../domain/provider/provider.js";
+import type { Metadata } from "../../../domain/metadata/metadata.js";
+import { Money } from "../../../domain/money/money.js";
+import { PaymentReference } from "../../../domain/reference/payment-reference.js";
+import { ValidationError } from "../../../errors/validation-error.js";
+import type {
+  PaystackTransactionData,
+  PaystackCustomer,
+  PaystackAuthorization,
+  PaystackInitializeData,
+  PaystackInitializeResponse,
+  PaystackVerifyResponse,
+  PaystackListResponse,
+  PaystackWebhookEvent,
+  PaystackRefundData,
+  PaystackRefundResponse,
+} from "./paystack-types.js";
+import type { WebhookEvent } from "../../../domain/webhook/webhook-event.js";
+import type { Page } from "../../../application/ports/payment-provider.js";
+import type { RefundResult } from "../../../application/ports/payment-provider.js";
+
+function mapPaystackStatus(status: string): PaymentStatus {
+  switch (status) {
+    case "abandoned":
+      return { kind: "abandoned" };
+    case "success":
+      return {
+        kind: "success",
+        paidAt: new Date(),
+      };
+    case "failed":
+      return {
+        kind: "failed",
+        reason: "payment_failed",
+        failedAt: new Date(),
+      };
+    case "pending":
+    case "processing":
+    case "ongoing":
+    case "queued":
+      return { kind: "pending" };
+    case "reversed":
+      return {
+        kind: "refunded",
+        refundedAt: new Date(),
+        refundId: "unknown",
+      };
+    default:
+      return { kind: "pending" };
+  }
+}
+
+function emptyMetadata(): Metadata {
+  return Object.freeze({}) as Metadata;
+}
+
+export function mapPaystackCustomer(pc: PaystackCustomer): Customer {
+  const name = [pc.first_name, pc.last_name].filter(Boolean).join(" ") || undefined;
+  return {
+    id: String(pc.id),
+    email: pc.email,
+    phone: pc.phone,
+    name,
+    metadata: pc.metadata ? Object.freeze({ ...pc.metadata }) : emptyMetadata(),
+  };
+}
+
+function mapAuthorization(auth: PaystackAuthorization): PaymentAttempt {
+  return {
+    id: auth.authorization_code,
+    status: { kind: "success", paidAt: new Date() },
+    channel: auth.channel as PaymentAttempt["channel"],
+    bin: auth.bin,
+    last4: auth.last4,
+    bank: auth.bank,
+    authorizationCode: auth.authorization_code,
+    attemptedAt: new Date(),
+  };
+}
+
+export function mapPaystackTransactionToPayment(tx: PaystackTransactionData): Payment {
+  const provider = Provider("paystack");
+  const amount = Money({ amount: tx.amount, currency: tx.currency });
+  const status = mapPaystackStatus(tx.status);
+  const customer = mapPaystackCustomer(tx.customer);
+  const reference = PaymentReference(tx.reference);
+
+  const attempts: PaymentAttempt[] = [];
+  if (tx.authorization) {
+    attempts.push(mapAuthorization(tx.authorization));
+  }
+
+  return {
+    id: String(tx.id),
+    providerId: provider,
+    reference,
+    amount,
+    status,
+    customer,
+    authorizationUrl: undefined,
+    channel: tx.channel as Payment["channel"],
+    attempts: Object.freeze(attempts),
+    metadata: tx.metadata ? Object.freeze({ ...tx.metadata }) : emptyMetadata(),
+    createdAt: new Date(tx.created_at),
+    updatedAt: new Date(tx.updated_at),
+    paidAt: tx.paid_at ? new Date(tx.paid_at) : undefined,
+    failureReason: tx.status === "failed" ? tx.gateway_response : undefined,
+  };
+}
+
+export function mapInitializeResponse(
+  response: PaystackInitializeResponse,
+  request: PaymentRequest,
+): Payment {
+  const data = response.data;
+  const reference = request.reference;
+  const amount = request.amount;
+
+  return {
+    id: reference,
+    providerId: Provider("paystack"),
+    reference,
+    amount,
+    status: { kind: "initialized" },
+    customer: request.customer.kind === "inline"
+      ? request.customer.customer
+      : {
+          id: "pending",
+          email: request.customer.kind === "new" ? request.customer.email : "unknown",
+          phone: request.customer.kind === "new" ? request.customer.phone : undefined,
+          name: request.customer.kind === "new" ? request.customer.name : undefined,
+        },
+    authorizationUrl: data.authorization_url,
+    channel: undefined,
+    attempts: [],
+    metadata: request.metadata ?? emptyMetadata(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
+
+export function mapPaystackResponseToPayment(
+  response: PaystackVerifyResponse,
+): Payment {
+  if (!response.status) {
+    throw new ValidationError(`Paystack verification failed: ${response.message}`);
+  }
+  return mapPaystackTransactionToPayment(response.data);
+}
+
+export function mapPaystackListResponse(
+  response: PaystackListResponse,
+): Page<Payment> {
+  return {
+    items: response.data.map(mapPaystackTransactionToPayment),
+    total: response.meta.total,
+    page: response.meta.page,
+    perPage: response.meta.perPage,
+  };
+}
+
+export function mapPaystackWebhookEvent(
+  webhook: PaystackWebhookEvent,
+): WebhookEvent {
+  const tx = webhook.data;
+  return {
+    id: String(tx.id) || webhook.event,
+    provider: Provider("paystack"),
+    type: normalizeWebhookType(webhook.event),
+    originalType: webhook.event,
+    createdAt: new Date(tx.created_at ?? new Date()),
+    receivedAt: new Date(),
+    payload: tx as unknown as Readonly<Record<string, unknown>>,
+    raw: webhook as unknown as Readonly<Record<string, unknown>>,
+  };
+}
+
+function normalizeWebhookType(event: string): string {
+  switch (event) {
+    case "charge.success":
+      return "payment.succeeded";
+    case "charge.failed":
+    case "charge.timeout":
+      return "payment.failed";
+    case "charge.pending":
+    case "charge.ongoing":
+      return "payment.pending";
+    case "charge.created":
+      return "payment.initialized";
+    case "refund.processed":
+    case "refund.failed":
+    case "refund.pending":
+      return "payment.unknown";
+    case "transfer.success":
+    case "transfer.failed":
+    case "transfer.reversed":
+      return "payment.unknown";
+    default:
+      return "payment.unknown";
+  }
+}
+
+export function mapPaystackRefundResponse(
+  response: PaystackRefundResponse,
+): RefundResult {
+  const data = response.data;
+  return {
+    id: String(data.id),
+    paymentId: String(data.transaction.id),
+    amount: Money({ amount: data.amount, currency: data.currency }),
+    status: mapRefundStatus(data.status),
+    reason: data.merchant_note,
+    reference: String(data.id),
+    createdAt: new Date(data.createdAt),
+    completedAt: data.status === "processed" ? new Date(data.updatedAt) : undefined,
+  };
+}
+
+function mapRefundStatus(status: string): RefundResult["status"] {
+  switch (status) {
+    case "processed":
+    case "success":
+      return "succeeded";
+    case "pending":
+    case "processing":
+      return "pending";
+    case "failed":
+      return "failed";
+    default:
+      return "processing";
+  }
+}

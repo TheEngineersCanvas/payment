@@ -1,0 +1,42 @@
+{
+  "status": true,
+  "message": "Verification successful",
+  "data": {
+    "id": 3811142484,
+    "domain": "test",
+    "status": "success",
+    "reference": "order-9001",
+    "amount": 5000000,
+    "currency": "NGN",
+    "channel": "card",
+    "gateway_response": "Successful",
+    "paid_at": "2026-07-14T10:30:00.000Z",
+    "created_at": "2026-07-14T10:29:00.000Z",
+    "updated_at": "2026-07-14T10:30:00.000Z",
+    "authorization": {
+      "authorization_code": "AUTH_8dfhjjd",
+      "bin": "408408",
+      "last4": "4081",
+      "bank": "TEST BANK",
+      "channel": "card",
+      "country_code": "NG",
+      "brand": "visa"
+    },
+    "customer": {
+      "id": 230576412,
+      "email": "customer@example.com",
+      "customer_code": "CUS_8as0hx0cly",
+      "first_name": "John",
+      "last_name": "Doe"
+    },
+    "metadata": {},
+    "log": {
+      "start_time": 1720952940,
+      "time_spent": 12,
+      "attempts": 1,
+      "errors": 0
+    },
+    "fees": 75000,
+    "fees_split": null
+  }
+}
