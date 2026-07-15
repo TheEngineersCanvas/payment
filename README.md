@@ -49,6 +49,33 @@ tec.events.on("payment.succeeded", (event) => {
   console.log("Payment succeeded:", event.payment.reference);
 });
 
+// Receive webhooks
+app.post("/webhooks/tec", express.raw({ type: "application/json" }), async (req, res) => {
+  const result = await tec.webhooks.receive({
+    rawBody: req.body,        // Buffer from express.raw()
+    signature: req.headers["x-paystack-signature"] as string,
+    headers: req.headers as Record<string, string>,
+  });
+
+  if (!result.ok) {
+    return res.status(401).json({ error: result.error.message });
+  }
+
+  // result.value is a normalized WebhookEvent
+  res.json({ received: true });
+});
+
+// Refund a payment
+const refundResult = await tec.refunds.create({
+  paymentId: "3811142484",
+  amount: Money({ amount: 100000, currency: "NGN" }),
+  reason: "Customer requested refund",
+});
+
+if (refundResult.ok) {
+  console.log("Refund initiated:", refundResult.value.id);
+}
+
 // Health check
 const health = await tec.health();
 ```
@@ -67,7 +94,7 @@ const tec = createPaymentClient.fromEnv();
 
 | Provider | Status |
 |----------|--------|
-| Paystack | Live |
+| Paystack | Live — payments, webhooks, refunds |
 
 ## Development
 

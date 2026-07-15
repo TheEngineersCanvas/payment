@@ -21,6 +21,8 @@ import type {
   PaystackRefundResponse,
 } from "./paystack-types.js";
 import type { WebhookEvent } from "../../../domain/webhook/webhook-event.js";
+import type { Refund } from "../../../domain/refund/refund.js";
+import type { RefundStatus } from "../../../domain/refund/refund-status.js";
 import type { Page } from "../../../application/ports/payment-provider.js";
 import type { RefundResult } from "../../../application/ports/payment-provider.js";
 
@@ -193,9 +195,11 @@ function normalizeWebhookType(event: string): string {
     case "charge.created":
       return "payment.initialized";
     case "refund.processed":
+      return "refund.succeeded";
     case "refund.failed":
+      return "refund.failed";
     case "refund.pending":
-      return "payment.unknown";
+      return "refund.initiated";
     case "transfer.success":
     case "transfer.failed":
     case "transfer.reversed":
@@ -233,5 +237,42 @@ function mapRefundStatus(status: string): RefundResult["status"] {
       return "failed";
     default:
       return "processing";
+  }
+}
+
+export function mapRefundResultToRefund(
+  result: RefundResult,
+  providerId: Provider,
+  clock: { now(): Date },
+): Refund {
+  const status = mapDomainRefundStatus(result.status, result.completedAt, clock);
+  return {
+    id: result.id,
+    paymentId: result.paymentId,
+    providerId,
+    amount: result.amount,
+    reason: result.reason,
+    status,
+    initiatedAt: result.createdAt,
+    completedAt: result.completedAt,
+    failureReason: result.status === "failed" ? result.reason : undefined,
+    metadata: Object.freeze({}) as Metadata,
+  };
+}
+
+function mapDomainRefundStatus(
+  status: string,
+  completedAt: Date | undefined,
+  clock: { now(): Date },
+): RefundStatus {
+  switch (status) {
+    case "succeeded":
+      return { kind: "succeeded", settledAt: completedAt ?? clock.now() };
+    case "failed":
+      return { kind: "failed", reason: "refund_failed", failedAt: completedAt ?? clock.now() };
+    case "pending":
+    case "processing":
+    default:
+      return { kind: "processing" };
   }
 }

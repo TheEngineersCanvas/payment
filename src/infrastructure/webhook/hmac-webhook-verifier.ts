@@ -10,10 +10,11 @@ export class HmacWebhookVerifier implements WebhookVerifier {
     this.algorithm = algorithm;
   }
 
-  verify(rawBody: string, signature: string): boolean {
+  verify(rawBody: string | Buffer, signature: string): boolean {
     try {
+      const bodyBuffer = typeof rawBody === "string" ? Buffer.from(rawBody, "utf8") : rawBody;
       const expected = createHmac(this.algorithm, this.secret)
-        .update(rawBody)
+        .update(bodyBuffer)
         .digest("hex");
 
       const a = Buffer.from(expected);

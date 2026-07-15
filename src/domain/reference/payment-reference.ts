@@ -8,14 +8,9 @@ export function PaymentReference(raw: string): PaymentReference {
   if (typeof raw !== "string" || raw.length === 0) {
     throw new ValidationError("Payment reference must be a non-empty string");
   }
-  if (raw.length < 6 || raw.length > 100) {
+  if (!/^[A-Za-z0-9._=,+\-]{6,100}$/.test(raw)) {
     throw new ValidationError(
-      `Payment reference must be between 6 and 100 characters, got ${raw.length}`,
-    );
-  }
-  if (!/^[a-zA-Z0-9_-]+$/.test(raw)) {
-    throw new ValidationError(
-      "Payment reference must contain only alphanumeric characters, hyphens, and underscores",
+      `Payment reference must be 6-100 characters, containing only alphanumeric characters, hyphens, underscores, dots, equals, commas, and plus signs (got length ${raw.length})`,
     );
   }
   return raw as PaymentReference;

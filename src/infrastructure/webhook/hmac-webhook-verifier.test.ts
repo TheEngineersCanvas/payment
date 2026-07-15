@@ -28,4 +28,20 @@ describe("HmacWebhookVerifier", () => {
     const wrongBody = JSON.stringify({ event: "charge.failed" });
     expect(verifier.verify(wrongBody, signature)).toBe(false);
   });
+
+  it("accepts a Buffer body producing same result as string", () => {
+    const body = JSON.stringify({ event: "charge.success", data: { id: 1 } });
+    const buffer = Buffer.from(body, "utf8");
+    const signature = createHmac("sha512", SECRET).update(buffer).digest("hex");
+
+    expect(verifier.verify(buffer, signature)).toBe(true);
+  });
+
+  it("rejects a Buffer with wrong encoding", () => {
+    const body = JSON.stringify({ event: "charge.success", data: { id: 1 } });
+    const wrongBody = Buffer.from(JSON.stringify({ event: "charge.failed" }), "utf8");
+    const signature = createHmac("sha512", SECRET).update(body).digest("hex");
+
+    expect(verifier.verify(wrongBody, signature)).toBe(false);
+  });
 });

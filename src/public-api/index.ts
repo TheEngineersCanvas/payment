@@ -36,3 +36,7 @@ export type { PaymentClient } from "../application/payment-client.js";
 export type { PaymentClientConfig } from "../application/client-config.js";
 export type { Logger } from "../application/ports/logger.js";
 export type { EventBus, EventSubscription } from "../application/ports/event-bus.js";
+
+export type { Refund } from "../domain/refund/refund.js";
+export type { RefundStatus, RefundStatusKind, isFinalRefundStatus } from "../domain/refund/refund-status.js";
+export { RefundReason } from "../domain/refund/refund-reason.js";

@@ -1,3 +1,3 @@
 export interface WebhookVerifier {
-  verify(rawBody: string, signature: string): boolean;
+  verify(rawBody: string | Buffer, signature: string): boolean;
 }

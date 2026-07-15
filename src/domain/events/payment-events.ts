@@ -4,6 +4,9 @@ import type { PaymentSucceeded } from "./payment-succeeded.js";
 import type { PaymentFailed } from "./payment-failed.js";
 import type { VerificationCompleted } from "./verification-completed.js";
 import type { WebhookReceived } from "./webhook-received.js";
+import type { RefundInitiated } from "./refund-initiated.js";
+import type { RefundSucceeded } from "./refund-succeeded.js";
+import type { RefundFailed } from "./refund-failed.js";
 
 export type {
   PaymentInitialized,
@@ -12,6 +15,9 @@ export type {
   PaymentFailed,
   VerificationCompleted,
   WebhookReceived,
+  RefundInitiated,
+  RefundSucceeded,
+  RefundFailed,
 };
 
 export type PaymentEvent =
@@ -21,6 +27,9 @@ export type PaymentEvent =
   | PaymentFailed
   | VerificationCompleted
   | WebhookReceived
+  | RefundInitiated
+  | RefundSucceeded
+  | RefundFailed
   | { readonly type: string; readonly occurredAt: Date; readonly correlationId: string };
 
 export type PaymentEventType = PaymentEvent["type"];

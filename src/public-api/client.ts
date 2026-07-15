@@ -14,6 +14,7 @@ import { NoopLogger } from "../infrastructure/logging/noop-logger.js";
 import { SystemClock } from "../infrastructure/clock/system-clock.js";
 import { UlidIdGenerator } from "../infrastructure/id/ulid-id-generator.js";
 import { InMemoryEventBus } from "../infrastructure/event-bus/in-memory-event-bus.js";
+import { HmacWebhookVerifier } from "../infrastructure/webhook/hmac-webhook-verifier.js";
 import type { Logger } from "../application/ports/logger.js";
 import type { EventBus } from "../application/ports/event-bus.js";
 import type { Provider } from "../domain/provider/provider.js";
@@ -57,13 +58,16 @@ export function createPaymentClient(config: PaymentClientConfig): PaymentClient 
       logger: logger.child({ provider: providerId }),
     });
 
+    const webhookSecret = (providerConfig.webhookSecret ?? providerConfig.secretKey) as string;
+    const webhookVerifier = new HmacWebhookVerifier(webhookSecret, "sha512");
+
     const provider = providerFactory.create(providerId as Provider, providerConfig, {
       httpClient,
       logger: logger.child({ provider: providerId }),
       clock,
       idGenerator,
       eventBus,
-      webhookVerifier: { verify: () => false },
+      webhookVerifier,
     });
 
     providerMap.set(providerId as Provider, provider);
@@ -95,8 +99,15 @@ export function createPaymentClient(config: PaymentClientConfig): PaymentClient 
     idGenerator,
   );
 
-  const refunds = new RefundService();
-  const webhooks = new WebhookService();
+  const serviceDeps = {
+    eventBus,
+    logger,
+    clock,
+    idGenerator,
+  };
+
+  const refunds = new RefundService(defaultProvider, serviceDeps);
+  const webhooks = new WebhookService(defaultProvider, serviceDeps);
   const events = new EventSubscriptionView(eventBus);
 
   return {

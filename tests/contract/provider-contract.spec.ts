@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHmac } from "node:crypto";
 
 import { PaystackAdapter } from "../../src/infrastructure/providers/paystack/paystack-adapter.js";
 import { Money } from "../../src/domain/money/money.js";
@@ -9,11 +10,14 @@ import { PaymentReference } from "../../src/domain/reference/payment-reference.j
 import { Provider } from "../../src/domain/provider/provider.js";
 import type { PaymentRequest } from "../../src/domain/payment/payment-request.js";
 import type { ProviderConfig } from "../../src/application/ports/provider-factory.js";
+import { HmacWebhookVerifier } from "../../src/infrastructure/webhook/hmac-webhook-verifier.js";
 import { MockHttpClient } from "../helpers/mock-http-client.js";
 import { NoopLogger } from "../../src/infrastructure/logging/noop-logger.js";
 import { SystemClock } from "../../src/infrastructure/clock/system-clock.js";
 import { UlidIdGenerator } from "../../src/infrastructure/id/ulid-id-generator.js";
 import { InMemoryEventBus } from "../../src/infrastructure/event-bus/in-memory-event-bus.js";
+
+const WEBHOOK_SECRET = "whsec_test_123";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -24,7 +28,7 @@ function loadFixture(name: string): string {
 function createAdapter(http: MockHttpClient): PaystackAdapter {
   const config: ProviderConfig = {
     secretKey: "sk_test_fake",
-    webhookSecret: "wh_secret",
+    webhookSecret: WEBHOOK_SECRET,
   };
 
   return new PaystackAdapter(config, {
@@ -33,7 +37,7 @@ function createAdapter(http: MockHttpClient): PaystackAdapter {
     clock: new SystemClock(),
     eventBus: new InMemoryEventBus(new NoopLogger()),
     idGenerator: new UlidIdGenerator(),
-    webhookVerifier: { verify: () => false },
+    webhookVerifier: new HmacWebhookVerifier(WEBHOOK_SECRET, "sha512"),
   });
 }
 
@@ -158,6 +162,81 @@ describe("Provider contract — Paystack", () => {
       const result = await adapter.health();
       expect(result.healthy).toBe(true);
       expect(result.latencyMs).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe("refund", () => {
+    it("returns a RefundResult on success", async () => {
+      http.setResponse("POST", "https://api.paystack.co/refund", {
+        status: 200,
+        body: loadFixture("paystack-refund.json"),
+      });
+
+      const result = await adapter.refund({
+        paymentId: "3811142484",
+        amount: 5000000,
+        reason: "Customer request",
+        reference: "corr-xyz",
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.status).toBe("succeeded");
+        expect(result.value.id).toBe("500");
+        expect(result.value.paymentId).toBe("3811142484");
+      }
+    });
+
+    it("returns error when provider fails", async () => {
+      http.setResponse("POST", "https://api.paystack.co/refund", {
+        status: 500,
+        body: '{"error": "server error"}',
+      });
+
+      const result = await adapter.refund({
+        paymentId: "3811142484",
+        reason: "test",
+        reference: "corr-xyz",
+      });
+
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  describe("parseWebhook", () => {
+    it("returns WebhookEvent for valid charge.success", async () => {
+      const rawBody = loadFixture("paystack-webhook.json");
+      const signature = createHmac("sha512", WEBHOOK_SECRET).update(rawBody).digest("hex");
+
+      const result = await adapter.parseWebhook(
+        { "x-paystack-signature": signature },
+        rawBody,
+      );
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.type).toBe("payment.succeeded");
+        expect(result.value.originalType).toBe("charge.success");
+        expect(result.value.provider).toBe("paystack");
+      }
+    });
+
+    it("returns error for bad signature", async () => {
+      const result = await adapter.parseWebhook(
+        { "x-paystack-signature": "bad-signature" },
+        loadFixture("paystack-webhook.json"),
+      );
+
+      expect(result.ok).toBe(false);
+    });
+
+    it("returns error for missing signature header", async () => {
+      const result = await adapter.parseWebhook(
+        {},
+        loadFixture("paystack-webhook.json"),
+      );
+
+      expect(result.ok).toBe(false);
     });
   });
 });
