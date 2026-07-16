@@ -36,5 +36,5 @@ None.
 - **Lint:** ESLint passes (0 errors, 0 warnings) with boundary enforcement
 - **Coverage:** `@vitest/coverage-v8` with thresholds (65% statements, 60% branches, 65% functions, 65% lines)
 - **Dependencies:** Zero runtime dependencies, zero npm packages in `dependencies`
-- **Docs:** 10 documentation files + 3 examples + contract test for public API surface
+- **Docs:** 10 documentation files + 3 examples (Next.js Server Actions + Route Handler, Hono, Express) + contract test for public API surface
 - **Version:** 0.1.0-RC1

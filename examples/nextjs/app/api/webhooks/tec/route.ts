@@ -1,4 +1,6 @@
-import { createPaymentClient, Money, PaymentReference } from "@tec/payment";
+/// <reference types="node" />
+
+import { createPaymentClient } from "@tec/payment";
 import { NextResponse } from "next/server";
 
 const client = createPaymentClient({
@@ -12,24 +14,10 @@ const client = createPaymentClient({
 });
 
 client.events.on("payment.succeeded", (event) => {
-  console.log(`Payment ${event.payment.reference} succeeded`);
+  console.log(`Payment ${event.payment.reference} succeeded — fulfill order`);
 });
 
-export async function POST_initialize(req: Request) {
-  const body = await req.json();
-  const result = await client.payments.initialize({
-    amount: Money({ amount: body.amount, currency: body.currency ?? "NGN" }),
-    reference: PaymentReference(body.reference),
-    customer: { kind: "new", email: body.email },
-    callbackUrl: body.callbackUrl,
-  });
-  if (!result.ok) {
-    return NextResponse.json({ error: result.error.message }, { status: 400 });
-  }
-  return NextResponse.json(result.value);
-}
-
-export async function POST_webhook(req: Request) {
+export async function POST(req: Request): Promise<NextResponse> {
   const rawBody = Buffer.from(await req.arrayBuffer());
   const signature = req.headers.get("x-paystack-signature") ?? "";
 
