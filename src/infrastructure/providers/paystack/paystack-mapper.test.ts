@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   mapPaystackTransactionToPayment,
   mapInitializeResponse,
-  mapPaystackResponseToPayment,
   mapPaystackListResponse,
   mapPaystackWebhookEvent,
   mapPaystackRefundResponse,
@@ -13,7 +12,6 @@ import { PaymentReference } from "../../../domain/reference/payment-reference.js
 import type {
   PaystackTransactionData,
   PaystackInitializeResponse,
-  PaystackVerifyResponse,
   PaystackListResponse,
   PaystackWebhookEvent,
   PaystackRefundResponse,

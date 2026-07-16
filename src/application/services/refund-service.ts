@@ -8,9 +8,8 @@ import type { Metadata } from "../../domain/metadata/metadata.js";
 import type { Refund } from "../../domain/refund/refund.js";
 import type { Result } from "../../shared/result/result.js";
 import type { PaymentError } from "../../errors/payment-error.js";
-import { err } from "../../shared/result/result.js";
-import { InternalError } from "../../errors/internal-error.js";
 import { refundPayment } from "../use-cases/refund-payment.js";
+import { fetchRefund } from "../use-cases/fetch-refund.js";
 
 export interface RefundCreateInput {
   readonly paymentId: string;
@@ -55,9 +54,13 @@ export class RefundService {
     );
   }
 
-  async fetch(
-    _id: string,
-  ): Promise<Result<unknown, PaymentError>> {
-    return err(new InternalError("refund_fetch_not_implemented"));
+  async fetch(id: string): Promise<Result<Refund, PaymentError>> {
+    return fetchRefund(
+      {
+        provider: this.provider,
+        logger: this.logger.child({ component: "refund-service" }),
+      },
+      id,
+    );
   }
 }

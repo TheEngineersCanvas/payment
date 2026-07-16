@@ -1,8 +1,7 @@
 import { HmacWebhookVerifier } from "../../webhook/hmac-webhook-verifier.js";
 import type { PaystackWebhookEvent } from "./paystack-types.js";
 import type { WebhookEvent } from "../../../domain/webhook/webhook-event.js";
-import type { Result } from "../../../shared/result/result.js";
-import { ok, err } from "../../../shared/result/result.js";
+import { ok, err, type Result } from "../../../shared/result/result.js";
 import { WebhookValidationError } from "../../../errors/webhook-validation-error.js";
 import { mapPaystackWebhookEvent } from "./paystack-mapper.js";
 

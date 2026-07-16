@@ -1,4 +1,4 @@
-import { Payment } from "../../../domain/payment/payment.js";
+import type { Payment } from "../../../domain/payment/payment.js";
 import type { PaymentRequest } from "../../../domain/payment/payment-request.js";
 import type { PaymentAttempt } from "../../../domain/payment/payment-attempt.js";
 import type { Customer } from "../../../domain/customer/customer.js";
@@ -12,19 +12,16 @@ import type {
   PaystackTransactionData,
   PaystackCustomer,
   PaystackAuthorization,
-  PaystackInitializeData,
   PaystackInitializeResponse,
   PaystackVerifyResponse,
   PaystackListResponse,
   PaystackWebhookEvent,
-  PaystackRefundData,
   PaystackRefundResponse,
 } from "./paystack-types.js";
 import type { WebhookEvent } from "../../../domain/webhook/webhook-event.js";
 import type { Refund } from "../../../domain/refund/refund.js";
 import type { RefundStatus } from "../../../domain/refund/refund-status.js";
-import type { Page } from "../../../application/ports/payment-provider.js";
-import type { RefundResult } from "../../../application/ports/payment-provider.js";
+import type { Page, RefundResult } from "../../../application/ports/payment-provider.js";
 
 function mapPaystackStatus(status: string): PaymentStatus {
   switch (status) {

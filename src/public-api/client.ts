@@ -107,7 +107,7 @@ export function createPaymentClient(config: PaymentClientConfig): PaymentClient 
   };
 
   const refunds = new RefundService(defaultProvider, serviceDeps);
-  const webhooks = new WebhookService(defaultProvider, serviceDeps);
+  const webhooks = new WebhookService(providerMap, serviceDeps);
   const events = new EventSubscriptionView(eventBus);
 
   return {
@@ -118,7 +118,7 @@ export function createPaymentClient(config: PaymentClientConfig): PaymentClient 
     providers,
     async health(): Promise<ReadonlyArray<HealthStatus>> {
       const results: HealthStatus[] = [];
-      for (const [id, provider] of providerMap) {
+      for (const [_id, provider] of providerMap) {
         try {
           results.push(await provider.health());
         } catch {

@@ -1,14 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import type { PaymentProvider } from "../ports/payment-provider.js";
-import type { EventBus } from "../ports/event-bus.js";
+import type { PaymentProvider, RefundResult } from "../ports/payment-provider.js";
 import type { Logger } from "../ports/logger.js";
-import type { Clock } from "../ports/clock.js";
-import type { IdGenerator } from "../ports/id-generator.js";
 import { Money } from "../../domain/money/money.js";
 import { Provider } from "../../domain/provider/provider.js";
-import { refundPayment } from "../use-cases/refund-payment.js";
-import type { RefundPaymentDeps, RefundPaymentInput } from "../use-cases/refund-payment.js";
-import type { RefundResult } from "../ports/payment-provider.js";
+import { refundPayment, type RefundPaymentDeps, type RefundPaymentInput } from "../use-cases/refund-payment.js";
 import type { PaymentError } from "../../errors/payment-error.js";
 import type { Result } from "../../shared/result/result.js";
 

@@ -7,7 +7,6 @@ import { createHmac } from "node:crypto";
 import { PaystackAdapter } from "../../src/infrastructure/providers/paystack/paystack-adapter.js";
 import { Money } from "../../src/domain/money/money.js";
 import { PaymentReference } from "../../src/domain/reference/payment-reference.js";
-import { Provider } from "../../src/domain/provider/provider.js";
 import type { PaymentRequest } from "../../src/domain/payment/payment-request.js";
 import type { ProviderConfig } from "../../src/application/ports/provider-factory.js";
 import { HmacWebhookVerifier } from "../../src/infrastructure/webhook/hmac-webhook-verifier.js";
@@ -198,6 +197,35 @@ describe("Provider contract — Paystack", () => {
         reason: "test",
         reference: "corr-xyz",
       });
+
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  describe("fetchRefund", () => {
+    it("returns a RefundResult on success", async () => {
+      http.setResponse("GET", "https://api.paystack.co/refund/500", {
+        status: 200,
+        body: loadFixture("paystack-refund.json"),
+      });
+
+      const result = await adapter.fetchRefund!("500");
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.status).toBe("succeeded");
+        expect(result.value.id).toBe("500");
+        expect(result.value.paymentId).toBe("3811142484");
+      }
+    });
+
+    it("returns error when refund not found", async () => {
+      http.setResponse("GET", "https://api.paystack.co/refund/999", {
+        status: 404,
+        body: '{"status": false, "message": "Refund not found"}',
+      });
+
+      const result = await adapter.fetchRefund!("999");
 
       expect(result.ok).toBe(false);
     });

@@ -1,17 +1,8 @@
-import type { PaymentProvider } from "../../../application/ports/payment-provider.js";
-import type {
-  ProviderCapabilities,
-  ListQuery,
-  Page,
-  HealthStatus,
-  RefundRequest,
-  RefundResult,
-} from "../../../application/ports/payment-provider.js";
+import type { PaymentProvider, ProviderCapabilities, ListQuery, Page, HealthStatus, RefundRequest, RefundResult } from "../../../application/ports/payment-provider.js";
 import type { Provider } from "../../../domain/provider/provider.js";
 import type { Payment } from "../../../domain/payment/payment.js";
 import type { PaymentRequest } from "../../../domain/payment/payment-request.js";
 import type { PaymentReference } from "../../../domain/reference/payment-reference.js";
-import type { Money } from "../../../domain/money/money.js";
 import type { Currency } from "../../../domain/money/currency.js";
 import type { WebhookEvent } from "../../../domain/webhook/webhook-event.js";
 import type { HttpClient } from "../../../application/ports/http-client.js";
@@ -20,11 +11,10 @@ import type { Clock } from "../../../application/ports/clock.js";
 import type { EventBus } from "../../../application/ports/event-bus.js";
 import type { IdGenerator } from "../../../application/ports/id-generator.js";
 import type { WebhookVerifier } from "../../../application/ports/webhook-verifier.js";
-import type { Result } from "../../../shared/result/result.js";
-import { ok, err } from "../../../shared/result/result.js";
+import { ok, err, type Result } from "../../../shared/result/result.js";
 import { ProviderError } from "../../../errors/provider-error.js";
 import type { PaymentError } from "../../../errors/payment-error.js";
-import { WebhookValidationError } from "../../../errors/webhook-validation-error.js";
+import type { WebhookValidationError } from "../../../errors/webhook-validation-error.js";
 import type { ProviderConfig } from "../../../application/ports/provider-factory.js";
 import type {
   PaystackInitializeResponse,
@@ -273,6 +263,30 @@ export class PaystackAdapter implements PaymentProvider {
     rawBody: string,
   ): Promise<Result<WebhookEvent, WebhookValidationError>> {
     return parsePaystackWebhook(headers, rawBody, this.webhookSecret);
+  }
+
+  async fetchRefund(refundId: string): Promise<Result<RefundResult, PaymentError>> {
+    this.logger.info("fetching refund", {
+      provider: "paystack",
+      refundId,
+    });
+
+    const result = await this.httpClient.send({
+      method: "GET",
+      url: `${this.baseUrl}/refund/${refundId}`,
+      headers: this.authHeaders(),
+      timeoutMs: this.timeoutMs,
+    });
+
+    if (!result.ok) return result;
+
+    try {
+      const response = JSON.parse(result.value.body) as PaystackRefundResponse;
+      const refund = mapPaystackRefundResponse(response);
+      return ok(refund);
+    } catch (e) {
+      return err(this.mapParseError(e, "fetch refund response"));
+    }
   }
 
   async health(): Promise<HealthStatus> {

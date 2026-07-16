@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { createPaymentClient } from "../../src/public-api/client.js";
 import { PaymentReference } from "../../src/domain/reference/payment-reference.js";
 import { Money } from "../../src/domain/money/money.js";
-import type { PaymentRequest } from "../../src/domain/payment/payment-request.js";
 import type { PaymentClient } from "../../src/application/payment-client.js";
 
 const SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;

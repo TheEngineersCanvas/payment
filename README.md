@@ -31,76 +31,89 @@ const result = await tec.payments.initialize({
 });
 
 if (result.ok) {
-  // Redirect user to Paystack checkout
   redirect(result.value.authorizationUrl);
-} else {
-  console.error(result.error.message);
 }
 
-// After redirect, verify the payment
+// Verify
 const verified = await tec.payments.verify(PaymentReference("order-9001"));
 
-if (verified.ok && verified.value.status.kind === "success") {
-  // Payment confirmed
-}
-
-// Subscribe to events
+// Events
 tec.events.on("payment.succeeded", (event) => {
   console.log("Payment succeeded:", event.payment.reference);
 });
 
-// Receive webhooks
+// Webhooks (Express example)
 app.post("/webhooks/tec", express.raw({ type: "application/json" }), async (req, res) => {
   const result = await tec.webhooks.receive({
-    rawBody: req.body,        // Buffer from express.raw()
+    rawBody: req.body,
     signature: req.headers["x-paystack-signature"] as string,
     headers: req.headers as Record<string, string>,
   });
-
-  if (!result.ok) {
-    return res.status(401).json({ error: result.error.message });
-  }
-
-  // result.value is a normalized WebhookEvent
+  if (!result.ok) return res.status(401).json({ error: result.error.message });
   res.json({ received: true });
 });
 
-// Refund a payment
+// Refunds
 const refundResult = await tec.refunds.create({
   paymentId: "3811142484",
-  amount: Money({ amount: 100000, currency: "NGN" }),
   reason: "Customer requested refund",
 });
 
-if (refundResult.ok) {
-  console.log("Refund initiated:", refundResult.value.id);
-}
-
-// Health check
+// Health
 const health = await tec.health();
 ```
 
-## Environment variables
-
-```bash
-export TEC_PAYMENT_PAYSTACK_SECRET_KEY=sk_test_...
-export TEC_PAYMENT_DEFAULT_PROVIDER=paystack
-
-# Then:
-const tec = createPaymentClient.fromEnv();
-```
-
-## Supported providers
+## Supported Providers
 
 | Provider | Status |
 |----------|--------|
 | Paystack | Live — payments, webhooks, refunds |
+
+## Documentation
+
+- **[Public API Reference](docs/public-api.md)** — Complete type and method reference
+- **[Architecture](docs/architecture.md)** — Hexagonal architecture overview
+- **[Security](docs/security.md)** — Threat model, webhook verification, secret handling
+- **[Extension Guide](docs/extension-guide.md)** — Adding providers, custom components
+- **[Provider Guide](docs/provider-guide.md)** — Implementing a new provider adapter
+- **[Migration Guide](docs/migration-guide.md)** — Migrating from direct provider SDK usage
+- **[Versioning](docs/versioning.md)** — Semantic versioning and stability guarantees
+- **[Performance](docs/performance.md)** — Performance characteristics and benchmarks
+- **[Concurrency](docs/concurrency.md)** — Thread safety and concurrency model
+- **[API Stability](docs/api-stability.md)** — Public API guarantees and deprecation policy
+
+## Examples
+
+- [Next.js (App Router)](examples/nextjs/route.ts)
+- [Hono](examples/hono/index.ts)
+- [Express](examples/express/index.ts)
+
+## Key Features
+
+- **One API, any provider.** Switch providers without changing application code.
+- **Zero runtime dependencies.** `crypto`, `fetch`, `URL` — nothing else.
+- **Result-over-exceptions.** `Result<T, E>` discriminated unions for type-safe error handling.
+- **Branded primitives.** `Money`, `PaymentReference`, `Provider` validated at construction.
+- **Domain events.** In-process pub/sub for reacting to payment state changes.
+- **Framework-agnostic.** Works with Next.js, Hono, Express, or any Node.js framework.
+- **TypeScript-first.** Full type safety with discriminated unions and exhaustive pattern matching.
 
 ## Development
 
 ```bash
 bun install
 bun run check-types    # tsc --noEmit
-bun run test           # vitest (unit + contract)
+bun run lint           # ESLint with architectural boundaries
+bun run test           # vitest (unit + contract + integration)
+bun run test:coverage  # vitest with v8 coverage
 bun run build          # tsup (ESM + CJS + d.ts)
+bun run verify         # Full pipeline: types → lint → test → build
 ```
+
+## Version Policy
+
+This project follows [Semantic Versioning](https://semver.org). Only exports from `src/public-api/index.ts` carry backward-compatibility guarantees. See [docs/versioning.md](docs/versioning.md) for details.
+
+## License
+
+UNLICENSED — Proprietary software by TheEngineersCanvas.

@@ -1,7 +1,6 @@
 import type { HttpClient, HttpRequest, HttpResponse } from "../../src/application/ports/http-client.js";
-import type { Result } from "../../src/shared/result/result.js";
+import { ok, err, type Result } from "../../src/shared/result/result.js";
 import type { PaymentError } from "../../src/errors/payment-error.js";
-import { ok, err } from "../../src/shared/result/result.js";
 import { ProviderError } from "../../src/errors/provider-error.js";
 
 export interface MockResponse {

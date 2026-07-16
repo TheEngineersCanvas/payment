@@ -1,7 +1,6 @@
 import type { HttpClient, HttpRequest, HttpResponse } from "../../application/ports/http-client.js";
 import type { Logger } from "../../application/ports/logger.js";
-import { ok, err } from "../../shared/result/result.js";
-import type { Result } from "../../shared/result/result.js";
+import { ok, err, type Result } from "../../shared/result/result.js";
 import type { PaymentError } from "../../errors/payment-error.js";
 import { NetworkError } from "../../errors/network-error.js";
 import { TimeoutError } from "../../errors/timeout-error.js";

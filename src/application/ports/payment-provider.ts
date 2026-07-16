@@ -73,5 +73,6 @@ export interface PaymentProvider {
     headers: Readonly<Record<string, string>>,
     rawBody: string,
   ): Promise<Result<WebhookEvent, WebhookValidationError>>;
+  fetchRefund?(refundId: string): Promise<Result<RefundResult, PaymentError>>;
   health(): Promise<HealthStatus>;
 }

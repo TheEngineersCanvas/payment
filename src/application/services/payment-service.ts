@@ -1,12 +1,11 @@
-import type { PaymentProvider } from "../ports/payment-provider.js";
 import type { Logger } from "../ports/logger.js";
 import type { Clock } from "../ports/clock.js";
 import type { EventBus } from "../ports/event-bus.js";
 import type { IdGenerator } from "../ports/id-generator.js";
+import type { PaymentProvider, ListQuery, Page } from "../ports/payment-provider.js";
 import type { Payment } from "../../domain/payment/payment.js";
 import type { PaymentRequest } from "../../domain/payment/payment-request.js";
 import type { PaymentReference } from "../../domain/reference/payment-reference.js";
-import type { ListQuery, Page } from "../ports/payment-provider.js";
 import type { Result } from "../../shared/result/result.js";
 import type { PaymentError } from "../../errors/payment-error.js";
 import { initializePayment } from "../use-cases/initialize-payment.js";

@@ -1,11 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { createHmac } from "node:crypto";
 import type { PaymentProvider } from "../ports/payment-provider.js";
-import type { EventBus } from "../ports/event-bus.js";
 import type { Logger } from "../ports/logger.js";
 import { Provider } from "../../domain/provider/provider.js";
-import { parseWebhook } from "../use-cases/parse-webhook.js";
-import type { ParseWebhookDeps } from "../use-cases/parse-webhook.js";
+import { parseWebhook, type ParseWebhookDeps } from "../use-cases/parse-webhook.js";
 import type { WebhookValidationError } from "../../errors/webhook-validation-error.js";
 import type { WebhookEvent } from "../../domain/webhook/webhook-event.js";
 import type { Result } from "../../shared/result/result.js";

@@ -4,8 +4,7 @@ import type { Clock } from "../ports/clock.js";
 import type { EventBus } from "../ports/event-bus.js";
 import type { IdGenerator } from "../ports/id-generator.js";
 import type { WebhookEvent } from "../../domain/webhook/webhook-event.js";
-import type { Result } from "../../shared/result/result.js";
-import { err, ok } from "../../shared/result/result.js";
+import { err, ok, type Result } from "../../shared/result/result.js";
 import { WebhookValidationError } from "../../errors/webhook-validation-error.js";
 
 export interface ParseWebhookDeps {
