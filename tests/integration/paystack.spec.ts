@@ -90,7 +90,7 @@ describeIf("Paystack Sandbox Integration", () => {
       return;
     }
 
-    const fetchResult = await client.payments.fetch(verifyResult.value.id);
+    const fetchResult = await client.payments.fetch(verifyResult.value.id!);
 
     expect(fetchResult.ok).toBe(true);
     if (fetchResult.ok) {

@@ -1,7 +1,8 @@
 import type { PaymentProvider } from "../ports/payment-provider.js";
+import type { Clock } from "../../application/ports/clock.js";
 import type { Logger } from "../ports/logger.js";
 import type { Refund } from "../../domain/refund/refund.js";
-import { err, type Result } from "../../shared/result/result.js";
+import { err, ok, type Result } from "../../shared/result/result.js";
 import type { PaymentError } from "../../errors/payment-error.js";
 import { InternalError } from "../../errors/internal-error.js";
 import { mapRefundResultToRefund } from "../../infrastructure/providers/paystack/paystack-mapper.js";
@@ -10,6 +11,7 @@ import type { Provider } from "../../domain/provider/provider.js";
 export interface FetchRefundDeps {
   readonly provider: PaymentProvider;
   readonly logger: Logger;
+  readonly clock: Clock;
 }
 
 export async function fetchRefund(
@@ -40,8 +42,8 @@ export async function fetchRefund(
   const refund = mapRefundResultToRefund(
     result.value,
     deps.provider.id as Provider,
-    { now: () => new Date() },
+    deps.clock,
   );
 
-  return { ok: true, value: refund } as Result<Refund, PaymentError>;
+  return ok(refund);
 }

@@ -32,6 +32,7 @@ function makeDeps(overrides?: Partial<FetchRefundDeps>): FetchRefundDeps {
       fetchRefund: vi.fn(),
     },
     logger: overrides?.logger ?? fakeLogger,
+    clock: { now: () => new Date("2026-07-15T12:00:00Z") },
   };
 }
 

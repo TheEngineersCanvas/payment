@@ -35,8 +35,49 @@ export { createPaymentClient } from "./client.js";
 export type { PaymentClient } from "../application/payment-client.js";
 export type { PaymentClientConfig } from "../application/client-config.js";
 export type { Logger } from "../application/ports/logger.js";
-export type { EventBus, EventSubscription } from "../application/ports/event-bus.js";
+export type { EventBus, EventSubscription, EventHandler, Unsubscribe } from "../application/ports/event-bus.js";
+
+export type { Clock } from "../application/ports/clock.js";
+export type { IdGenerator } from "../application/ports/id-generator.js";
+export type { HttpClient, HttpRequest, HttpResponse } from "../application/ports/http-client.js";
+
+export type {
+  ProviderCapabilities,
+  ListQuery,
+  Page,
+  HealthStatus,
+  RefundRequest,
+  RefundResult,
+} from "../application/ports/payment-provider.js";
+
+export type { Payment } from "../domain/payment/payment.js";
+export type { PaymentStatus, PaymentStatusKind } from "../domain/payment/payment-status.js";
+export { isFinalStatus, isTransitionAllowed } from "../domain/payment/payment-status.js";
+export type { PaymentRequest, CustomerReference } from "../domain/payment/payment-request.js";
+export type { PaymentChannel } from "../domain/payment/payment-channel.js";
+export type { PaymentAttempt } from "../domain/payment/payment-attempt.js";
+export type { Customer } from "../domain/customer/customer.js";
 
 export type { Refund } from "../domain/refund/refund.js";
-export type { RefundStatus, RefundStatusKind, isFinalRefundStatus } from "../domain/refund/refund-status.js";
+export type { RefundStatus, RefundStatusKind } from "../domain/refund/refund-status.js";
+export { isFinalRefundStatus } from "../domain/refund/refund-status.js";
 export { RefundReason } from "../domain/refund/refund-reason.js";
+
+export type { WebhookEvent } from "../domain/webhook/webhook-event.js";
+
+export type {
+  PaymentEvent,
+  PaymentEventType,
+  PaymentInitialized,
+  PaymentPending,
+  PaymentSucceeded,
+  PaymentFailed,
+  VerificationCompleted,
+  WebhookReceived,
+  RefundInitiated,
+  RefundSucceeded,
+  RefundFailed,
+} from "../domain/events/payment-events.js";
+
+export type { WebhookInput } from "../application/services/webhook-service.js";
+export type { RefundCreateInput } from "../application/services/refund-service.js";

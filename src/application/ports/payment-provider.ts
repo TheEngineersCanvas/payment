@@ -47,6 +47,7 @@ export interface RefundRequest {
   readonly amount?: number;
   readonly reason: string;
   readonly reference: string;
+  readonly idempotencyKey?: string;
 }
 
 export interface RefundResult {

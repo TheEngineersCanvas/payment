@@ -13,7 +13,7 @@ export interface WebhookInput {
   readonly provider?: string;
   readonly rawBody: string | Buffer;
   readonly signature: string;
-  readonly headers?: Readonly<Record<string, string>>;
+  readonly headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
 }
 
 export class WebhookService {

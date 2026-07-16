@@ -8,6 +8,7 @@ import type { Metadata } from "../../../domain/metadata/metadata.js";
 import { Money } from "../../../domain/money/money.js";
 import { PaymentReference } from "../../../domain/reference/payment-reference.js";
 import { ValidationError } from "../../../errors/validation-error.js";
+import { ProviderError } from "../../../errors/provider-error.js";
 import type {
   PaystackTransactionData,
   PaystackCustomer,
@@ -23,20 +24,20 @@ import type { Refund } from "../../../domain/refund/refund.js";
 import type { RefundStatus } from "../../../domain/refund/refund-status.js";
 import type { Page, RefundResult } from "../../../application/ports/payment-provider.js";
 
-function mapPaystackStatus(status: string): PaymentStatus {
+function mapPaystackStatus(status: string, tx: PaystackTransactionData): PaymentStatus {
   switch (status) {
     case "abandoned":
       return { kind: "abandoned" };
     case "success":
       return {
         kind: "success",
-        paidAt: new Date(),
+        paidAt: tx.paid_at ? new Date(tx.paid_at) : new Date(0),
       };
     case "failed":
       return {
         kind: "failed",
-        reason: "payment_failed",
-        failedAt: new Date(),
+        reason: tx.gateway_response ?? "payment_failed",
+        failedAt: new Date(tx.updated_at),
       };
     case "pending":
     case "processing":
@@ -46,7 +47,7 @@ function mapPaystackStatus(status: string): PaymentStatus {
     case "reversed":
       return {
         kind: "refunded",
-        refundedAt: new Date(),
+        refundedAt: new Date(tx.updated_at),
         refundId: "unknown",
       };
     default:
@@ -69,29 +70,30 @@ export function mapPaystackCustomer(pc: PaystackCustomer): Customer {
   };
 }
 
-function mapAuthorization(auth: PaystackAuthorization): PaymentAttempt {
+function mapAuthorization(auth: PaystackAuthorization, tx: PaystackTransactionData): PaymentAttempt {
+  const at = tx.paid_at ?? tx.updated_at ?? tx.created_at;
   return {
     id: auth.authorization_code,
-    status: { kind: "success", paidAt: new Date() },
+    status: { kind: "success", paidAt: tx.paid_at ? new Date(tx.paid_at) : new Date(0) },
     channel: auth.channel as PaymentAttempt["channel"],
     bin: auth.bin,
     last4: auth.last4,
     bank: auth.bank,
     authorizationCode: auth.authorization_code,
-    attemptedAt: new Date(),
+    attemptedAt: new Date(at),
   };
 }
 
 export function mapPaystackTransactionToPayment(tx: PaystackTransactionData): Payment {
   const provider = Provider("paystack");
   const amount = Money({ amount: tx.amount, currency: tx.currency });
-  const status = mapPaystackStatus(tx.status);
+  const status = mapPaystackStatus(tx.status, tx);
   const customer = mapPaystackCustomer(tx.customer);
   const reference = PaymentReference(tx.reference);
 
   const attempts: PaymentAttempt[] = [];
   if (tx.authorization) {
-    attempts.push(mapAuthorization(tx.authorization));
+    attempts.push(mapAuthorization(tx.authorization, tx));
   }
 
   return {
@@ -116,12 +118,19 @@ export function mapInitializeResponse(
   response: PaystackInitializeResponse,
   request: PaymentRequest,
 ): Payment {
+  if (!response.status) {
+    throw new ProviderError(response.message, {
+      provider: Provider("paystack"),
+      httpStatus: 422,
+      isRetryable: false,
+    });
+  }
+
   const data = response.data;
   const reference = request.reference;
   const amount = request.amount;
 
   return {
-    id: reference,
     providerId: Provider("paystack"),
     reference,
     amount,
@@ -136,8 +145,8 @@ export function mapInitializeResponse(
         },
     authorizationUrl: data.authorization_url,
     channel: undefined,
-    attempts: [],
-    metadata: request.metadata ?? emptyMetadata(),
+    attempts: Object.freeze([]),
+    metadata: request.metadata ? Object.freeze({ ...request.metadata }) : emptyMetadata(),
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -155,6 +164,13 @@ export function mapPaystackResponseToPayment(
 export function mapPaystackListResponse(
   response: PaystackListResponse,
 ): Page<Payment> {
+  if (!response.status) {
+    throw new ProviderError(response.message, {
+      provider: Provider("paystack"),
+      httpStatus: 422,
+      isRetryable: false,
+    });
+  }
   return {
     items: response.data.map(mapPaystackTransactionToPayment),
     total: response.meta.total,
@@ -209,6 +225,14 @@ function normalizeWebhookType(event: string): string {
 export function mapPaystackRefundResponse(
   response: PaystackRefundResponse,
 ): RefundResult {
+  if (!response.status) {
+    throw new ProviderError(response.message, {
+      provider: Provider("paystack"),
+      httpStatus: 422,
+      isRetryable: false,
+    });
+  }
+
   const data = response.data;
   return {
     id: String(data.id),

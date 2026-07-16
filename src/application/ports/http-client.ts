@@ -8,6 +8,8 @@ export interface HttpRequest {
   readonly body?: string;
   readonly timeoutMs?: number;
   readonly isRetryable?: boolean;
+  readonly correlationId?: string;
+  readonly idempotencyKey?: string;
 }
 
 export interface HttpResponse {

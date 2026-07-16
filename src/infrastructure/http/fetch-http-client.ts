@@ -5,7 +5,14 @@ import type { PaymentError } from "../../errors/payment-error.js";
 import { NetworkError } from "../../errors/network-error.js";
 import { TimeoutError } from "../../errors/timeout-error.js";
 import { ProviderUnavailableError } from "../../errors/provider-unavailable-error.js";
-import { ProviderError } from "../../errors/provider-error.js";
+import {
+  ProviderError,
+  ProviderBadRequestError,
+  ProviderUnauthorizedError,
+  ProviderNotFoundError,
+  ProviderConflictError,
+  ProviderRateLimitError,
+} from "../../errors/provider-error.js";
 import type { Provider } from "../../domain/provider/provider.js";
 
 const IDEMPOTENT_METHODS: ReadonlySet<string> = new Set(["GET", "HEAD"]);
@@ -89,8 +96,12 @@ export class FetchHttpClient implements HttpClient {
         ...request.headers,
       };
 
-      if (this.correlationId) {
-        headers["X-TEC-Correlation-Id"] = this.correlationId;
+      if (request.correlationId) {
+        headers["X-TEC-Correlation-Id"] = request.correlationId;
+      }
+
+      if (request.idempotencyKey) {
+        headers["Idempotency-Key"] = request.idempotencyKey;
       }
 
       const response = await fetch(url, {
@@ -164,13 +175,55 @@ export class FetchHttpClient implements HttpClient {
     }
 
     if (status === 429) {
-      return err(new ProviderError(
+      return err(new ProviderRateLimitError(
         `Rate limited (${status}) by provider`,
         {
           provider: this.provider,
           providerCode: String(status),
-          httpStatus: status,
-          isRetryable: true,
+          meta: { url, body: body.slice(0, 500) },
+        },
+      ));
+    }
+
+    if (status === 400) {
+      return err(new ProviderBadRequestError(
+        `Bad request (${status}) to provider`,
+        {
+          provider: this.provider,
+          providerCode: String(status),
+          meta: { url, body: body.slice(0, 500) },
+        },
+      ));
+    }
+
+    if (status === 401 || status === 403) {
+      return err(new ProviderUnauthorizedError(
+        `Unauthorized (${status}) to provider`,
+        {
+          provider: this.provider,
+          providerCode: String(status),
+          meta: { url, body: body.slice(0, 500) },
+        },
+      ));
+    }
+
+    if (status === 404) {
+      return err(new ProviderNotFoundError(
+        `Not found (${status}) at provider`,
+        {
+          provider: this.provider,
+          providerCode: String(status),
+          meta: { url, body: body.slice(0, 500) },
+        },
+      ));
+    }
+
+    if (status === 409) {
+      return err(new ProviderConflictError(
+        `Conflict (${status}) at provider`,
+        {
+          provider: this.provider,
+          providerCode: String(status),
           meta: { url, body: body.slice(0, 500) },
         },
       ));
@@ -197,6 +250,7 @@ function isAbortError(e: unknown): boolean {
 function isRetryableError(error: PaymentError): boolean {
   if (error.isRetryable) return true;
   if (error instanceof ProviderUnavailableError) return true;
+  if (error instanceof ProviderRateLimitError) return true;
   if (error instanceof NetworkError) return true;
   if (error instanceof TimeoutError) return true;
   return false;

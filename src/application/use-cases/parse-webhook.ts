@@ -18,7 +18,7 @@ export interface ParseWebhookDeps {
 export interface ParseWebhookInput {
   readonly rawBody: string | Buffer;
   readonly signature: string;
-  readonly headers?: Readonly<Record<string, string>>;
+  readonly headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
 }
 
 export async function parseWebhook(
@@ -40,7 +40,7 @@ export async function parseWebhook(
   }
 
   const result = await deps.provider.parseWebhook(
-    input.headers ?? {},
+    joinHeaders(input.headers ?? {}),
     bodyString,
   );
 
@@ -75,4 +75,15 @@ function tryConvertBuffer(body: Buffer): Result<string, WebhookValidationError> 
   } catch {
     return err(new WebhookValidationError("Invalid webhook body: not valid UTF-8"));
   }
+}
+
+function joinHeaders(
+  raw: Readonly<Record<string, string | readonly string[] | undefined>>,
+): Readonly<Record<string, string>> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (value === undefined) continue;
+    result[key] = typeof value === "string" ? value : value.join(", ");
+  }
+  return result;
 }

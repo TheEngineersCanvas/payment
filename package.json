@@ -1,6 +1,6 @@
 {
   "name": "@tec/payment",
-  "version": "0.1.0",
+  "version": "0.1.0-RC1",
   "description": "Framework-agnostic payment abstraction SDK By TheEngineersCanvas",
   "license": "UNLICENSED",
   "author": "TheEngineersCanvas",

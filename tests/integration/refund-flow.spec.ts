@@ -39,7 +39,7 @@ describeIf("Paystack Sandbox — Refunds", () => {
     expect(verifyResult.ok).toBe(true);
     if (!verifyResult.ok) return;
 
-    const paymentId = verifyResult.value.id;
+    const paymentId = verifyResult.value.id!;
     expect(paymentId).toBeDefined();
 
     const refundResult = await client.refunds.create({

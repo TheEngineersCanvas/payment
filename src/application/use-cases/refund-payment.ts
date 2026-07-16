@@ -6,7 +6,7 @@ import type { IdGenerator } from "../ports/id-generator.js";
 import type { Money } from "../../domain/money/money.js";
 import type { Metadata } from "../../domain/metadata/metadata.js";
 import type { Refund } from "../../domain/refund/refund.js";
-import { err, type Result } from "../../shared/result/result.js";
+import { err, ok, type Result } from "../../shared/result/result.js";
 import { ValidationError } from "../../errors/validation-error.js";
 import type { PaymentError } from "../../errors/payment-error.js";
 import { mapRefundResultToRefund } from "../../infrastructure/providers/paystack/paystack-mapper.js";
@@ -23,7 +23,9 @@ export interface RefundPaymentInput {
   readonly paymentId: string;
   readonly amount?: Money;
   readonly reason: string;
+  readonly reference?: string;
   readonly metadata?: Metadata;
+  readonly idempotencyKey?: string;
 }
 
 export async function refundPayment(
@@ -45,7 +47,8 @@ export async function refundPayment(
     paymentId: input.paymentId,
     amount: input.amount?.amount,
     reason: input.reason,
-    reference: correlationId,
+    reference: input.reference ?? correlationId,
+    idempotencyKey: input.idempotencyKey,
   };
 
   const result = await deps.provider.refund(providerInput);
@@ -85,5 +88,5 @@ export async function refundPayment(
     });
   }
 
-  return { ok: true, value: refund } as Result<Refund, PaymentError>;
+  return ok(refund);
 }

@@ -53,3 +53,17 @@ export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 **Resolution:** Added `override` to all subclass property declarations.
 
 **Prevention:** When using `noImplicitOverride: true`, always use `override` on any property that shadows one from a parent class, whether abstract or concrete.
+
+---
+
+## LL-005: Public API barrel must mirror docs/public-api.md; both must be guarded by a contract test
+
+**Problem:** The `public-api/index.ts` barrel was missing 20+ types that were documented in `docs/public-api.md` and used in the README examples. TypeScript consumers importing `Payment`, `HealthStatus`, `PaymentStatus`, etc. from `@tec/payment` got `Module has no exported member`. This was only caught after a detailed manual code review of every type used in the docs vs. every `export` line in the barrel.
+
+**Root Cause:** The barrel was hand-maintained without an automated check. As new types were added to the codebase and documented, nobody validated that the barrel kept pace. The build (`tsup`) and type checker (`tsc --noEmit`) both pass even when the barrel is incomplete because internal imports work fine — the bug only surfaces when an external consumer tries to import from `@tec/payment`.
+
+**Resolution:** 
+1. Exported all missing types from the public barrel.
+2. Added `tests/contract/public-api.spec.ts` — enumerates every type referenced in `docs/public-api.md` and asserts it can be imported from `src/public-api/index.js`. If a type is added to the docs but not the barrel, the test fails at CI time.
+
+**Prevention:** Any change to `docs/public-api.md` that adds a new type name MUST be accompanied by a matching `export` in `src/public-api/index.ts` AND a corresponding assertion in `tests/contract/public-api.spec.ts`. The test is the single source of truth for the public surface.

@@ -88,11 +88,7 @@ export class PaystackAdapter implements PaymentProvider {
       callback_url: req.callbackUrl,
       channels: req.channels ? req.channels.slice() : undefined,
       metadata: req.metadata
-        ? (Object.fromEntries(
-            Object.entries(req.metadata).filter(
-              ([, v]) => typeof v !== "boolean",
-            ),
-          ) as Readonly<Record<string, string | number>>)
+        ? (req.metadata as Readonly<Record<string, string | number | boolean>>)
         : undefined,
     };
 
@@ -112,6 +108,8 @@ export class PaystackAdapter implements PaymentProvider {
       headers: this.authHeaders(),
       body: JSON.stringify(payload),
       timeoutMs: this.timeoutMs,
+      correlationId,
+      idempotencyKey: req.idempotencyKey,
     });
 
     if (!result.ok) {
@@ -146,6 +144,7 @@ export class PaystackAdapter implements PaymentProvider {
       url: `${this.baseUrl}/transaction/verify/${encodeURIComponent(reference)}`,
       headers: this.authHeaders(),
       timeoutMs: this.timeoutMs,
+      correlationId,
     });
 
     if (!result.ok) return result;
@@ -173,6 +172,7 @@ export class PaystackAdapter implements PaymentProvider {
       url: `${this.baseUrl}/transaction/${encodeURIComponent(id)}`,
       headers: this.authHeaders(),
       timeoutMs: this.timeoutMs,
+      correlationId,
     });
 
     if (!result.ok) return result;
@@ -211,6 +211,7 @@ export class PaystackAdapter implements PaymentProvider {
       url,
       headers: this.authHeaders(),
       timeoutMs: this.timeoutMs,
+      correlationId,
     });
 
     if (!result.ok) return result;
@@ -245,6 +246,8 @@ export class PaystackAdapter implements PaymentProvider {
       headers: this.authHeaders(),
       body,
       timeoutMs: this.timeoutMs,
+      correlationId,
+      idempotencyKey: input.idempotencyKey,
     });
 
     if (!result.ok) return result;
@@ -266,9 +269,12 @@ export class PaystackAdapter implements PaymentProvider {
   }
 
   async fetchRefund(refundId: string): Promise<Result<RefundResult, PaymentError>> {
+    const correlationId = this.idGenerator.generate();
+
     this.logger.info("fetching refund", {
       provider: "paystack",
       refundId,
+      correlationId,
     });
 
     const result = await this.httpClient.send({
@@ -276,6 +282,7 @@ export class PaystackAdapter implements PaymentProvider {
       url: `${this.baseUrl}/refund/${refundId}`,
       headers: this.authHeaders(),
       timeoutMs: this.timeoutMs,
+      correlationId,
     });
 
     if (!result.ok) return result;

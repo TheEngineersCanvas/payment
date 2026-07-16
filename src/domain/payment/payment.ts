@@ -8,7 +8,7 @@ import type { PaymentAttempt } from "./payment-attempt.js";
 import type { Customer } from "../customer/customer.js";
 
 export interface Payment {
-  readonly id: string;
+  readonly id?: string;
   readonly providerId: Provider;
   readonly reference: PaymentReference;
   readonly amount: Money;

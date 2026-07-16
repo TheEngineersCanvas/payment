@@ -9,6 +9,7 @@ import {
 } from "./paystack-mapper.js";
 import { Money } from "../../../domain/money/money.js";
 import { PaymentReference } from "../../../domain/reference/payment-reference.js";
+import { ProviderError } from "../../../errors/provider-error.js";
 import type {
   PaystackTransactionData,
   PaystackInitializeResponse,
@@ -124,7 +125,8 @@ describe("mapInitializeResponse", () => {
     expect(payment.authorizationUrl).toBe("https://checkout.paystack.com/test");
     expect(payment.amount.amount).toBe(5000);
     expect(payment.customer.email).toBe("test@example.com");
-    expect(payment.id).toBe("order-001");
+    expect(payment.id).toBeUndefined();
+    expect(payment.reference).toBe("order-001");
   });
 });
 
@@ -192,5 +194,106 @@ describe("mapPaystackRefundResponse", () => {
     expect(refund.paymentId).toBe("12345");
     expect(refund.amount.amount).toBe(5000000);
     expect(refund.reason).toBe("Customer request");
+  });
+});
+
+describe("Paystack business error guards", () => {
+  it("mapInitializeResponse throws ProviderError when status is false", () => {
+    const response: PaystackInitializeResponse = {
+      status: false,
+      message: "Duplicate transaction reference",
+      data: null as unknown as PaystackInitializeResponse["data"],
+    };
+
+    const request = {
+      amount: Money({ amount: 5000, currency: "NGN" }),
+      reference: PaymentReference("order-001"),
+      customer: { kind: "new", email: "test@example.com" } as const,
+    };
+
+    expect(() => mapInitializeResponse(response, request)).toThrow(ProviderError);
+    expect(() => mapInitializeResponse(response, request)).toThrow("Duplicate transaction reference");
+  });
+
+  it("mapPaystackListResponse throws ProviderError when status is false", () => {
+    const response: PaystackListResponse = {
+      status: false,
+      message: "Invalid query parameter",
+      data: null as unknown as PaystackListResponse["data"],
+      meta: null as unknown as PaystackListResponse["meta"],
+    };
+
+    expect(() => mapPaystackListResponse(response)).toThrow(ProviderError);
+    expect(() => mapPaystackListResponse(response)).toThrow("Invalid query parameter");
+  });
+
+  it("mapPaystackRefundResponse throws ProviderError when status is false", () => {
+    const response: PaystackRefundResponse = {
+      status: false,
+      message: "Duplicate refund reference",
+      data: null as unknown as PaystackRefundResponse["data"],
+    };
+
+    expect(() => mapPaystackRefundResponse(response)).toThrow(ProviderError);
+    expect(() => mapPaystackRefundResponse(response)).toThrow("Duplicate refund reference");
+  });
+});
+
+describe("Timestamp accuracy", () => {
+  it("Payment status.paidAt uses the real Paystack paid_at timestamp", () => {
+    const payment = mapPaystackTransactionToPayment(SAMPLE_TX);
+
+    expect(payment.status.kind).toBe("success");
+    if (payment.status.kind === "success") {
+      expect(payment.status.paidAt.toISOString()).toBe("2026-07-14T10:30:00.000Z");
+    }
+    expect(payment.paidAt?.toISOString()).toBe("2026-07-14T10:30:00.000Z");
+  });
+
+  it("PaymentAttempt.attemptedAt uses tx.paid_at when available", () => {
+    const payment = mapPaystackTransactionToPayment(SAMPLE_TX);
+
+    expect(payment.attempts[0]?.attemptedAt.toISOString()).toBe("2026-07-14T10:30:00.000Z");
+  });
+
+  it("Payment status.failedAt uses updated_at for failed transactions", () => {
+    const failed = { ...SAMPLE_TX, status: "failed", gateway_response: "Declined", paid_at: null };
+    const payment = mapPaystackTransactionToPayment(failed);
+
+    expect(payment.status.kind).toBe("failed");
+    if (payment.status.kind === "failed") {
+      expect(payment.status.failedAt.toISOString()).toBe("2026-07-14T10:30:00.000Z");
+    }
+  });
+
+  it("PaymentAttempt.attemptedAt falls back to updated_at when paid_at is null", () => {
+    const tx = { ...SAMPLE_TX, paid_at: null };
+    const payment = mapPaystackTransactionToPayment(tx);
+
+    expect(payment.attempts[0]?.attemptedAt.toISOString()).toBe("2026-07-14T10:30:00.000Z");
+  });
+});
+
+describe("mapInitializeResponse", () => {
+  it("does not set id on initialized payments", () => {
+    const response: PaystackInitializeResponse = {
+      status: true,
+      message: "Authorization URL created",
+      data: {
+        authorization_url: "https://checkout.paystack.com/test",
+        access_code: "ACC_123",
+        reference: "order-001",
+      },
+    };
+
+    const request = {
+      amount: Money({ amount: 5000, currency: "NGN" }),
+      reference: PaymentReference("order-001"),
+      customer: { kind: "new", email: "test@example.com" } as const,
+    };
+
+    const payment = mapInitializeResponse(response, request);
+    expect(payment.id).toBeUndefined();
+    expect(payment.reference).toBe("order-001");
   });
 });

@@ -214,7 +214,7 @@ client.events.on("payment.failed", (event) => {
 
 ```ts
 interface Payment {
-  readonly id: string;
+  readonly id?: string;
   readonly providerId: Provider;
   readonly reference: PaymentReference;
   readonly amount: Money;
@@ -230,6 +230,8 @@ interface Payment {
   readonly failureReason?: string;
 }
 ```
+
+`id` is the provider-assigned numeric ID. It is `undefined` after `initialize()` and only populated by `verify()` / `fetch()`. Use `reference` as the stable lifecycle lookup key.
 
 ### PaymentStatus
 
@@ -254,6 +256,7 @@ interface PaymentRequest {
   readonly channels?: ReadonlyArray<PaymentChannel>;
   readonly metadata?: Metadata;
   readonly expiresAt?: Date;
+  readonly idempotencyKey?: string;
 }
 
 type CustomerReference =
@@ -371,6 +374,187 @@ function Currency(value: string): Currency;
 
 ```ts
 type Metadata = Readonly<Record<string, string | number | boolean | null>>;
+```
+
+### Customer
+
+```ts
+interface Customer {
+  readonly id: string;
+  readonly email: string;
+  readonly phone?: string;
+  readonly name?: string;
+  readonly metadata?: Metadata;
+}
+```
+
+### PaymentChannel
+
+```ts
+type PaymentChannel = "card" | "bank" | "ussd" | "qr" | "mobile_money" | "bank_transfer" | (string & {});
+```
+
+### PaymentAttempt
+
+```ts
+interface PaymentAttempt {
+  readonly id: string;
+  readonly status: PaymentStatus;
+  readonly channel: PaymentChannel;
+  readonly ipAddress?: string;
+  readonly fees?: Money;
+  readonly authorizationCode?: string;
+  readonly bin?: string;
+  readonly last4?: string;
+  readonly bank?: string;
+  readonly attemptedAt: Date;
+}
+```
+
+### HealthStatus
+
+```ts
+interface HealthStatus {
+  readonly healthy: boolean;
+  readonly latencyMs: number;
+  readonly timestamp: Date;
+}
+```
+
+### Page\<T\>
+
+```ts
+interface Page<T> {
+  readonly items: ReadonlyArray<T>;
+  readonly total: number;
+  readonly page: number;
+  readonly perPage: number;
+}
+```
+
+### ListQuery
+
+```ts
+interface ListQuery {
+  readonly page?: number;
+  readonly perPage?: number;
+  readonly from?: Date;
+  readonly to?: Date;
+  readonly status?: string;
+  readonly customer?: string;
+}
+```
+
+### ProviderCapabilities
+
+```ts
+interface ProviderCapabilities {
+  readonly supportsAuthorizationUrl: boolean;
+  readonly supportsRecurring: boolean;
+  readonly supportsPartialRefund: boolean;
+  readonly supportsWebhooks: boolean;
+  readonly maxAmount?: Money;
+  readonly supportedCurrencies: ReadonlyArray<Currency>;
+  readonly supportedChannels: ReadonlyArray<PaymentChannel>;
+}
+```
+
+### RefundRequest
+
+```ts
+interface RefundRequest {
+  readonly paymentId: string;
+  readonly amount?: number;
+  readonly reason: string;
+  readonly reference: string;
+  readonly idempotencyKey?: string;
+}
+```
+
+### RefundResult
+
+```ts
+interface RefundResult {
+  readonly id: string;
+  readonly paymentId: string;
+  readonly amount: Money;
+  readonly status: "pending" | "processing" | "succeeded" | "failed";
+  readonly reason: string;
+  readonly reference: string;
+  readonly createdAt: Date;
+  readonly completedAt?: Date;
+}
+```
+
+### WebhookInput
+
+```ts
+interface WebhookInput {
+  readonly provider?: string;
+  readonly rawBody: string | Buffer;
+  readonly signature: string;
+  readonly headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
+}
+```
+
+### RefundCreateInput
+
+```ts
+interface RefundCreateInput {
+  readonly paymentId: string;
+  readonly amount?: Money;
+  readonly reason: string;
+  readonly reference?: string;
+  readonly idempotencyKey?: string;
+  readonly metadata?: Metadata;
+}
+```
+
+### HttpClient / HttpRequest / HttpResponse
+
+```ts
+interface HttpClient {
+  send(request: HttpRequest): Promise<Result<HttpResponse, PaymentError>>;
+}
+
+interface HttpRequest {
+  readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD";
+  readonly url: string;
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly body?: string;
+  readonly timeoutMs?: number;
+  readonly isRetryable?: boolean;
+  readonly correlationId?: string;
+  readonly idempotencyKey?: string;
+}
+
+interface HttpResponse {
+  readonly status: number;
+  readonly headers: Readonly<Record<string, string>>;
+  readonly body: string;
+}
+```
+
+### Clock / IdGenerator
+
+```ts
+interface Clock {
+  now(): Date;
+}
+
+interface IdGenerator {
+  generate(): string;
+}
+```
+
+### EventHandler / Unsubscribe
+
+```ts
+type EventHandler<T extends PaymentEventType = PaymentEventType> = (
+  event: Extract<PaymentEvent, { type: T }>,
+) => void | Promise<void>;
+
+type Unsubscribe = () => void;
 ```
 
 ## Error Classes

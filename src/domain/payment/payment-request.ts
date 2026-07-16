@@ -17,4 +17,5 @@ export interface PaymentRequest {
   readonly channels?: ReadonlyArray<PaymentChannel>;
   readonly metadata?: Metadata;
   readonly expiresAt?: Date;
+  readonly idempotencyKey?: string;
 }

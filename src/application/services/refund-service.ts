@@ -15,6 +15,8 @@ export interface RefundCreateInput {
   readonly paymentId: string;
   readonly amount?: Money;
   readonly reason: string;
+  readonly reference?: string;
+  readonly idempotencyKey?: string;
   readonly metadata?: Metadata;
 }
 
@@ -59,6 +61,7 @@ export class RefundService {
       {
         provider: this.provider,
         logger: this.logger.child({ component: "refund-service" }),
+        clock: this.clock,
       },
       id,
     );
