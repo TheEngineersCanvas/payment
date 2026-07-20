@@ -67,6 +67,70 @@ const refundResult = await tec.refunds.create({
 const health = await tec.health();
 ```
 
+### NestJS
+
+```ts
+import { PaymentModule } from "@tec/payment/nestjs";
+
+@Module({
+  imports: [
+    PaymentModule.forRoot({
+      providers: {
+        paystack: { secretKey: process.env.PAYSTACK_SECRET_KEY! },
+      },
+      defaultProvider: "paystack",
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+Then inject `PaymentService` (idiomatic) or the raw client via `@Inject(TEC_PAYMENT_CLIENT)`:
+
+```ts
+import { PaymentService } from "@tec/payment/nestjs";
+
+@Injectable()
+export class MyService {
+  constructor(private readonly tec: PaymentService) {}
+
+  async createPayment() {
+    const result = await this.tec.payments.initialize({ ... });
+  }
+}
+```
+
+**Webhooks:** The module registers a `WebhookController` at `POST /webhooks/tec`
+by default. To use it **you must enable raw body capture** in `main.ts`:
+
+```ts
+const app = await NestFactory.create(AppModule, { rawBody: true });
+```
+
+Without this, `req.rawBody` is `undefined` and webhook signature verification
+will fail silently. To disable the built-in controller and provide your own:
+
+```ts
+// main.ts — disable built-in controller
+@Module({
+  imports: [
+    PaymentModule.forRoot(config, { registerWebhookController: false }),
+  ],
+})
+export class AppModule {}
+
+// custom webhook controller with explicit constructor forwarding
+import { WebhookController, TEC_PAYMENT_CLIENT } from "@tec/payment/nestjs";
+import type { PaymentClient } from "@tec/payment";
+
+@Controller("webhooks/my-path")
+export class MyController extends WebhookController {
+  constructor(@Inject(TEC_PAYMENT_CLIENT) client: PaymentClient) {
+    super(client);
+  }
+}
+```
+
 ## Supported Providers
 
 | Provider | Status |
@@ -91,6 +155,7 @@ const health = await tec.health();
 - [Next.js (App Router)](examples/nextjs/route.ts)
 - [Hono](examples/hono/index.ts)
 - [Express](examples/express/index.ts)
+- [NestJS](examples/nestjs/)
 
 ## Key Features
 
@@ -99,7 +164,7 @@ const health = await tec.health();
 - **Result-over-exceptions.** `Result<T, E>` discriminated unions for type-safe error handling.
 - **Branded primitives.** `Money`, `PaymentReference`, `Provider` validated at construction.
 - **Domain events.** In-process pub/sub for reacting to payment state changes.
-- **Framework-agnostic.** Works with Next.js, Hono, Express, or any Node.js framework.
+- **Framework-agnostic.** Works with Next.js, Hono, Express, NestJS, or any Node.js framework.
 - **TypeScript-first.** Full type safety with discriminated unions and exhaustive pattern matching.
 
 ## Development

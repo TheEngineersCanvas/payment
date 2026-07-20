@@ -81,8 +81,12 @@ export default [
             allow: { to: { element: { types: { anyOf: ["public-api", "application", "domain", "shared", "errors", "infrastructure"] } } } },
           },
           {
+            from: { element: { types: "adapters" } },
+            allow: { to: { element: { types: { anyOf: ["adapters", "public-api", "shared", "errors"] } } } },
+          },
+          {
             from: { element: { types: "tests" } },
-            allow: { to: { element: { types: { anyOf: ["tests", "public-api", "application", "domain", "shared", "errors", "infrastructure"] } } } },
+            allow: { to: { element: { types: { anyOf: ["tests", "public-api", "application", "domain", "shared", "errors", "infrastructure", "adapters"] } } } },
           },
         ],
       }],
@@ -93,6 +97,7 @@ export default [
         { type: "application", pattern: "src/application/**" },
         { type: "infrastructure", pattern: "src/infrastructure/**" },
         { type: "public-api", pattern: "src/public-api/**" },
+        { type: "adapters", pattern: "src/adapters/**" },
         { type: "shared", pattern: "src/shared/**" },
         { type: "errors", pattern: "src/errors/**" },
         { type: "tests", pattern: "tests/**" },

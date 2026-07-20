@@ -9,6 +9,7 @@ Example integrations for popular Node.js frameworks.
 | Next.js (App Router) | `nextjs/` | Server Actions (`actions.ts`) + Route Handler (`route.ts`), raw body from `arrayBuffer()` |
 | Hono | `hono/` | Minimal API, raw body, health check |
 | Express | `express/` | Middleware stack, `express.raw()`, event subscriptions, refunds |
+| NestJS | `nestjs/` | Dynamic module (`forRoot`/`forRootAsync`), DI token, webhook controller, raw body via `NestFactory.create(rawBody: true)` |
 
 ## Next.js Pattern
 
