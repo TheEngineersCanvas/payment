@@ -7,7 +7,11 @@ Provider-agnostic TypeScript SDK for payment processing. One API, any provider.
 ## Install
 
 ```bash
+# From npm (when published):
 bun add @tec/payment
+
+# From GitHub:
+bun add github:TheEngineersCanvas/payment#main
 ```
 
 ## Quickstart

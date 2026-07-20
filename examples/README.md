@@ -48,7 +48,11 @@ Each example is self-contained. Copy the relevant files into your project.
 All examples require:
 
 ```bash
+# From npm (when published):
 bun add @tec/payment
+
+# From GitHub:
+bun add github:TheEngineersCanvas/payment#main
 ```
 
 Set environment variables:
