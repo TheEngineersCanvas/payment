@@ -1,13 +1,24 @@
 {
-  "name": "@tec/payment",
+  "name": "@TheEngineersCanvas/payment",
   "version": "0.1.0-RC1",
   "description": "Framework-agnostic payment abstraction SDK By TheEngineersCanvas",
   "license": "UNLICENSED",
   "author": "TheEngineersCanvas",
-  "keywords": ["payment", "paystack", "typescript", "sdk", "nodejs", "webhook", "refund"],
+  "keywords": [
+    "payment",
+    "paystack",
+    "typescript",
+    "sdk",
+    "nodejs",
+    "webhook",
+    "refund"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/TheEngineersCanvas/payment"
+    "url": "git+https://github.com/TheEngineersCanvas/payment.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   },
   "type": "module",
   "main": "./dist/index.cjs",
