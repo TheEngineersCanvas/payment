@@ -1,12 +1,14 @@
 import { Controller, Inject, Module } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { describe, it, expect, vi } from "vitest";
+import { createHmac } from "node:crypto";
 import {
   PaymentModule,
   TEC_PAYMENT_CLIENT,
   PaymentService,
   WebhookController,
   DEFAULT_WEBHOOK_PATH,
+  NestLoggerAdapter,
 } from "./index.js";
 import {
   createPaymentClient,
@@ -14,12 +16,14 @@ import {
   type PaymentClientConfig,
 } from "../../public-api/index.js";
 
+const WEBHOOK_SECRET = "whsec_fake";
+
 function createTestConfig(): PaymentClientConfig {
   return {
     providers: {
       paystack: {
         secretKey: "sk_test_fake",
-        webhookSecret: "whsec_fake",
+        webhookSecret: WEBHOOK_SECRET,
         baseUrl: "https://api.paystack.co",
       },
     },
@@ -29,6 +33,25 @@ function createTestConfig(): PaymentClientConfig {
 
 function makeRealClient(): PaymentClient {
   return createPaymentClient(createTestConfig());
+}
+
+function signPayload(payload: string): string {
+  return createHmac("sha512", WEBHOOK_SECRET).update(payload).digest("hex");
+}
+
+function validWebhookBody(): string {
+  return JSON.stringify({
+    event: "charge.success",
+    data: {
+      id: 123,
+      status: "success",
+      reference: "ref-1",
+      amount: 5000,
+      currency: "NGN",
+      channel: "card",
+      customer: { id: 1, email: "test@test.com" },
+    },
+  });
 }
 
 describe("PaymentModule", () => {
@@ -80,23 +103,21 @@ describe("PaymentModule", () => {
       expect(controller).toBeDefined();
       expect(controller).toBeInstanceOf(WebhookController);
 
+      const body = validWebhookBody();
       const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
 
       await controller.handle(
         {
-          rawBody: Buffer.from(JSON.stringify({ event: "charge.success" })),
+          rawBody: Buffer.from(body),
           headers: {
-            "x-paystack-signature": "some-sig",
+            "x-paystack-signature": signPayload(body),
             "content-type": "application/json",
           },
         },
         res,
       );
 
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: expect.any(String) }),
-      );
+      expect(res.json).toHaveBeenCalledWith({ received: true });
     });
 
     it("skips WebhookController when registerWebhookController is false", () => {
@@ -186,6 +207,27 @@ describe("PaymentModule", () => {
       expect(controller).toBeDefined();
     });
 
+    it("accepts a valid HMAC-signed webhook and returns { received: true }", async () => {
+      const client = makeRealClient();
+      const controller = new WebhookController(client);
+
+      const body = validWebhookBody();
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+
+      await controller.handle(
+        {
+          rawBody: Buffer.from(body),
+          headers: {
+            "x-paystack-signature": signPayload(body),
+            "content-type": "application/json",
+          },
+        },
+        res,
+      );
+
+      expect(res.json).toHaveBeenCalledWith({ received: true });
+    });
+
     it("returns 401 on webhook validation failure", async () => {
       const client = makeRealClient();
       const controller = new WebhookController(client);
@@ -223,6 +265,16 @@ describe("PaymentModule", () => {
       expect(res.status).toHaveBeenCalledWith(401);
     });
 
+    it("returns 401 when rawBody is undefined", async () => {
+      const client = makeRealClient();
+      const controller = new WebhookController(client);
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+
+      await controller.handle({}, res);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+    });
+
     it("subclass resolves via Nest DI with explicit constructor forwarding", async () => {
       @Controller("webhooks/my-path")
       class MyController extends WebhookController {
@@ -255,23 +307,34 @@ describe("PaymentModule", () => {
       expect(controller).toBeDefined();
       expect(controller).toBeInstanceOf(WebhookController);
 
+      const body = validWebhookBody();
       const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
 
       await controller.handle(
         {
-          rawBody: Buffer.from(JSON.stringify({ event: "charge.success" })),
+          rawBody: Buffer.from(body),
           headers: {
-            "x-paystack-signature": "some-sig",
+            "x-paystack-signature": signPayload(body),
             "content-type": "application/json",
           },
         },
         res,
       );
 
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: expect.any(String) }),
-      );
+      expect(res.json).toHaveBeenCalledWith({ received: true });
+    });
+  });
+
+  describe("NestLoggerAdapter", () => {
+    it("implements the SDK Logger interface", () => {
+      const adapter = new NestLoggerAdapter("Test");
+      expect(typeof adapter.debug).toBe("function");
+      expect(typeof adapter.info).toBe("function");
+      expect(typeof adapter.warn).toBe("function");
+      expect(typeof adapter.error).toBe("function");
+      expect(typeof adapter.child).toBe("function");
+      const child = adapter.child({ component: "test" });
+      expect(typeof child.debug).toBe("function");
     });
   });
 });

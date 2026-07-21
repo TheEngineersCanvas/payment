@@ -2,6 +2,37 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { PaymentClient, HealthStatus } from "../../public-api/index.js";
 import { TEC_PAYMENT_CLIENT } from "./constants.js";
 
+/**
+ * Injectable NestJS service wrapping the `@tec/payment` client.
+ *
+ * Delegates every sub-service (`payments`, `refunds`, `webhooks`,
+ * `events`, `health`) directly to the underlying {@link PaymentClient}.
+ * {@link https://www.npmjs.com/package/@tec/payment Result} objects
+ * are returned as-is — the consuming application decides how to handle
+ * success and failure cases.
+ *
+ * @example
+ * ```ts
+ * import { PaymentService } from "@tec/payment/nestjs";
+ * import { Money, PaymentReference } from "@tec/payment";
+ *
+ * @Injectable()
+ * export class CheckoutService {
+ *   constructor(private readonly tec: PaymentService) {}
+ *
+ *   async checkout(amount: number, email: string) {
+ *     const result = await this.tec.payments.initialize({
+ *       amount: Money({ amount, currency: "NGN" }),
+ *       reference: PaymentReference(`order-${Date.now()}`),
+ *       customer: { kind: "new", email },
+ *       callbackUrl: "https://myapp.com/verify",
+ *     });
+ *     if (!result.ok) return { error: result.error.message };
+ *     return { url: result.value.authorizationUrl };
+ *   }
+ * }
+ * ```
+ */
 @Injectable()
 export class PaymentService {
   constructor(

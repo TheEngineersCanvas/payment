@@ -1,33 +1,63 @@
 import { Controller, Inject, Post, Req, Res } from "@nestjs/common";
 import type { PaymentClient } from "../../public-api/index.js";
 import { TEC_PAYMENT_CLIENT, DEFAULT_WEBHOOK_PATH } from "./constants.js";
+import type { RawBodyRequest } from "./raw-body-request.js";
 
+/**
+ * Built-in webhook endpoint registered at `POST /webhooks/tec`.
+ *
+ * **IMPORTANT:** Consumers **must** enable raw body capture in `main.ts`:
+ *
+ * ```ts
+ * const app = await NestFactory.create(AppModule, { rawBody: true });
+ * ```
+ *
+ * Without this, `req.rawBody` is `undefined` and every webhook will be
+ * rejected with a 401.
+ *
+ * Disable this controller by passing `{ registerWebhookController: false }`
+ * to {@link PaymentModule.forRoot} and register your own subclass:
+ *
+ * ```ts
+ * @Controller("webhooks/my-path")
+ * class MyController extends WebhookController {
+ *   constructor(@Inject(TEC_PAYMENT_CLIENT) client: PaymentClient) {
+ *     super(client);
+ *   }
+ * }
+ * ```
+ */
 @Controller(DEFAULT_WEBHOOK_PATH)
 export class WebhookController {
   constructor(
     @Inject(TEC_PAYMENT_CLIENT) private readonly client: PaymentClient,
   ) {}
 
+  /**
+   * Receives a provider webhook, verifies its signature, and emits the
+   * corresponding domain event via the configured event bus.
+   *
+   * The signature header name is not enforced here — the underlying
+   * {@link WebhookService.receive} performs a try-all over every
+   * configured provider, so multi-provider setups work correctly as
+   * long as the full `headers` map is forwarded.
+   */
   @Post()
-  async handle(@Req() req: unknown, @Res() res: unknown): Promise<void> {
-    const typedReq = req as {
-      rawBody?: string | Buffer;
-      headers?: Record<string, string | readonly string[] | undefined>;
-    };
+  async handle(@Req() req: RawBodyRequest, @Res() res: unknown): Promise<void> {
     const typedRes = res as {
       status: (code: number) => { json: (body: unknown) => void };
       json: (body: unknown) => void;
     };
 
     const signature =
-      (typedReq.headers?.["x-paystack-signature"] as string | undefined) ?? "";
+      (req.headers?.["x-paystack-signature"] as string | undefined) ?? "";
 
-    const rawBody = typedReq.rawBody ?? "";
+    const rawBody = req.rawBody ?? "";
 
     const result = await this.client.webhooks.receive({
       rawBody,
       signature,
-      headers: typedReq.headers,
+      headers: req.headers,
     });
 
     if (!result.ok) {

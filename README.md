@@ -85,6 +85,21 @@ import { PaymentModule } from "@tec/payment/nestjs";
 export class AppModule {}
 ```
 
+**Async configuration** (e.g. from `@nestjs/config`):
+
+```ts
+PaymentModule.forRootAsync({
+  imports: [ConfigModule],
+  useFactory: (config: ConfigService) => ({
+    providers: {
+      paystack: { secretKey: config.getOrThrow("PAYSTACK_SECRET_KEY") },
+    },
+    logger: new NestLoggerAdapter("PaymentClient"),
+  }),
+  inject: [ConfigService],
+});
+```
+
 Then inject `PaymentService` (idiomatic) or the raw client via `@Inject(TEC_PAYMENT_CLIENT)`:
 
 ```ts
