@@ -1,4 +1,4 @@
-import { Controller, Inject, Post, Req, Res } from "@nestjs/common";
+import { Controller, Inject, Post, Req, Res, type LoggerService } from "@nestjs/common";
 import type { PaymentClient } from "../../public-api/index.js";
 import { TEC_PAYMENT_CLIENT, DEFAULT_WEBHOOK_PATH } from "./constants.js";
 import type { RawBodyRequest } from "./raw-body-request.js";
@@ -29,9 +29,14 @@ import type { RawBodyRequest } from "./raw-body-request.js";
  */
 @Controller(DEFAULT_WEBHOOK_PATH)
 export class WebhookController {
+  private readonly logger: LoggerService | undefined;
+
   constructor(
     @Inject(TEC_PAYMENT_CLIENT) private readonly client: PaymentClient,
-  ) {}
+    logger?: LoggerService,
+  ) {
+    this.logger = logger;
+  }
 
   /**
    * Receives a provider webhook, verifies its signature, and emits the
@@ -61,10 +66,20 @@ export class WebhookController {
     });
 
     if (!result.ok) {
+      this.logger?.warn(
+        `Webhook signature verification failed: ${result.error.message}`,
+        { error: result.error.meta },
+      );
       typedRes.status(401).json({ error: result.error.message });
       return;
     }
 
+    this.logger?.log(`Webhook received: ${result.value.type}`, {
+      provider: result.value.provider,
+      type: result.value.type,
+      originalType: result.value.originalType,
+      eventId: result.value.id,
+    });
     typedRes.json({ received: true });
   }
 }

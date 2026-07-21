@@ -140,11 +140,12 @@ export function fromEnv(): PaymentClient {
 
   const providers: Record<string, ProviderConfig> = {};
 
-  if (process.env.TEC_PAYMENT_PAYSTACK_SECRET_KEY) {
+  const paystackKey = process.env.TEC_PAYMENT_PAYSTACK_SECRET_KEY ?? process.env.PAYSTACK_SECRET_KEY;
+  if (paystackKey) {
     providers.paystack = {
-      secretKey: process.env.TEC_PAYMENT_PAYSTACK_SECRET_KEY,
-      webhookSecret: process.env.TEC_PAYMENT_PAYSTACK_WEBHOOK_SECRET,
-      baseUrl: process.env.TEC_PAYMENT_PAYSTACK_BASE_URL,
+      secretKey: paystackKey,
+      webhookSecret: process.env.TEC_PAYMENT_PAYSTACK_WEBHOOK_SECRET ?? process.env.PAYSTACK_WEBHOOK_SECRET,
+      baseUrl: process.env.TEC_PAYMENT_PAYSTACK_BASE_URL ?? process.env.PAYSTACK_BASE_URL,
     };
   }
 

@@ -92,7 +92,7 @@ export class PaystackAdapter implements PaymentProvider {
         : undefined,
     };
 
-    const correlationId = this.idGenerator.generate();
+    const correlationId = req.correlationId ?? this.idGenerator.generate();
 
     this.logger.info("initializing payment", {
       provider: "paystack",
@@ -226,7 +226,7 @@ export class PaystackAdapter implements PaymentProvider {
   }
 
   async refund(input: RefundRequest): Promise<Result<RefundResult, PaymentError>> {
-    const correlationId = this.idGenerator.generate();
+    const correlationId = input.correlationId ?? this.idGenerator.generate();
 
     const body = JSON.stringify({
       transaction: input.paymentId,

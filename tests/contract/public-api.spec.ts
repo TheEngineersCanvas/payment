@@ -82,7 +82,7 @@ import {
 
 describe("public-api barrel exports", () => {
   it("exports all documented value exports", () => {
-    expect(VERSION).toBe("0.1.0-RC1");
+    expect(VERSION).toBe("0.1.0-RC3");
     expect(typeof createPaymentClient).toBe("function");
     expect(typeof Money).toBe("function");
     expect(typeof MinorUnits).toBe("function");
@@ -193,6 +193,39 @@ describe("public-api barrel exports", () => {
     expect(payment.id).toBeUndefined();
   });
 
+  it("Payment has fees, netAmount, accessCode", () => {
+    const payment: Payment = {
+      providerId: Provider("paystack"),
+      reference: PaymentReference("order-001"),
+      amount: Money({ amount: 500000, currency: "NGN" }),
+      fees: Money({ amount: 7500, currency: "NGN" }),
+      netAmount: Money({ amount: 492500, currency: "NGN" }),
+      accessCode: "ACC_123",
+      status: { kind: "success", paidAt: new Date() },
+      customer: { id: "cus_1", email: "test@test.com", name: "John" },
+      authorizationUrl: "https://checkout.example.com",
+      channel: "card",
+      attempts: [],
+      metadata: Object.freeze({}),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      paidAt: new Date(),
+    };
+    expect(payment.fees?.amount).toBe(7500);
+    expect(payment.netAmount?.amount).toBe(492500);
+    expect(payment.accessCode).toBe("ACC_123");
+  });
+
+  it("PaymentRequest has correlationId", () => {
+    const req: PaymentRequest = {
+      amount: Money({ amount: 100, currency: "NGN" }),
+      customer: { kind: "new", email: "test@test.com" },
+      reference: PaymentReference("order-001"),
+      correlationId: "corr-xyz",
+    };
+    expect(req.correlationId).toBe("corr-xyz");
+  });
+
   it("PaymentRequest has idempotencyKey", () => {
     const req: PaymentRequest = {
       amount: Money({ amount: 100, currency: "NGN" }),
@@ -203,25 +236,29 @@ describe("public-api barrel exports", () => {
     expect(req.idempotencyKey).toBe("key-123");
   });
 
-  it("RefundCreateInput has reference and idempotencyKey", () => {
+  it("RefundCreateInput has reference, idempotencyKey, and correlationId", () => {
     const input: RefundCreateInput = {
       paymentId: "12345",
       reason: "test",
       reference: "ref-abc",
       idempotencyKey: "key-456",
+      correlationId: "corr-refund",
     };
     expect(input.reference).toBe("ref-abc");
     expect(input.idempotencyKey).toBe("key-456");
+    expect(input.correlationId).toBe("corr-refund");
   });
 
-  it("RefundRequest has idempotencyKey", () => {
+  it("RefundRequest has idempotencyKey and correlationId", () => {
     const req: RefundRequest = {
       paymentId: "123",
       reason: "test",
       reference: "ref-abc",
       idempotencyKey: "key-789",
+      correlationId: "corr-rfnd",
     };
     expect(req.idempotencyKey).toBe("key-789");
+    expect(req.correlationId).toBe("corr-rfnd");
   });
 
   it("HttpRequest has correlationId and idempotencyKey", () => {

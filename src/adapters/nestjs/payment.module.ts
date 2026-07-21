@@ -1,5 +1,9 @@
 import {
+  Controller,
+  Inject,
   Module,
+  Logger,
+  type LoggerService,
   type DynamicModule,
   type FactoryProvider,
   type ModuleMetadata,
@@ -9,11 +13,13 @@ import {
   type PaymentClient,
   type PaymentClientConfig,
 } from "../../public-api/index.js";
-import { TEC_PAYMENT_CLIENT } from "./constants.js";
+import { TEC_PAYMENT_CLIENT, DEFAULT_WEBHOOK_PATH } from "./constants.js";
 import { PaymentService } from "./payment.service.js";
 import { WebhookController } from "./webhook.controller.js";
 
 export { TEC_PAYMENT_CLIENT, DEFAULT_WEBHOOK_PATH } from "./constants.js";
+
+const WEBHOOK_LOGGER = "TEC_PAYMENT_WEBHOOK_LOGGER";
 
 /**
  * Options for {@link PaymentModule.forRoot}.
@@ -29,6 +35,15 @@ export interface PaymentModuleOptions {
    * @default true
    */
   registerWebhookController?: boolean;
+
+  /**
+   * Path prefix for the built-in webhook controller.
+   *
+   * Only used when {@link registerWebhookController} is not `false`.
+   *
+   * @default "webhooks/tec"
+   */
+  webhookPath?: string;
 }
 
 /**
@@ -51,6 +66,13 @@ export interface PaymentModuleAsyncOptions
    * @default true
    */
   registerWebhookController?: boolean;
+
+  /**
+   * Path prefix for the built-in webhook controller.
+   *
+   * @default "webhooks/tec"
+   */
+  webhookPath?: string;
 }
 
 /**
@@ -77,6 +99,41 @@ function createAsyncPaymentClientFactory(
 }
 
 const EXPORTED_PROVIDERS = [TEC_PAYMENT_CLIENT, PaymentService];
+
+function createWebhookControllerClass(path: string): typeof WebhookController {
+  @Controller(path)
+  class DynamicWebhookController extends WebhookController {
+    constructor(@Inject(TEC_PAYMENT_CLIENT) client: PaymentClient) {
+      super(client);
+    }
+  }
+
+  return DynamicWebhookController as typeof WebhookController;
+}
+
+function buildWebhookProviders(
+  clientFactory: FactoryProvider["useFactory"],
+  path: string,
+): { providers: FactoryProvider[]; controllerClass: typeof WebhookController } {
+  const controllerClass = path !== DEFAULT_WEBHOOK_PATH
+    ? createWebhookControllerClass(path)
+    : WebhookController;
+
+  const providers: FactoryProvider[] = [
+    {
+      provide: WEBHOOK_LOGGER,
+      useFactory: () => new Logger("WebhookController"),
+    },
+    {
+      provide: controllerClass,
+      useFactory: (client: PaymentClient, logger: LoggerService) =>
+        new controllerClass(client, logger),
+      inject: [TEC_PAYMENT_CLIENT, WEBHOOK_LOGGER],
+    },
+  ];
+
+  return { providers, controllerClass };
+}
 
 /**
  * NestJS dynamic module integrating `@TheEngineersCanvas/payment` into the DI container.
@@ -128,6 +185,8 @@ export class PaymentModule {
         ? true
         : options.registerWebhookController;
 
+    const webhookPath = options?.webhookPath ?? DEFAULT_WEBHOOK_PATH;
+
     const providers: Array<FactoryProvider> = [
       {
         provide: TEC_PAYMENT_CLIENT,
@@ -142,12 +201,12 @@ export class PaymentModule {
 
     const controllers: Array<{ new (...args: any[]): unknown }> = [];
     if (shouldRegisterController) {
-      providers.push({
-        provide: WebhookController,
-        useFactory: (client: PaymentClient) => new WebhookController(client),
-        inject: [TEC_PAYMENT_CLIENT],
-      });
-      controllers.push(WebhookController);
+      const built = buildWebhookProviders(
+        createPaymentClientFactory(config),
+        webhookPath,
+      );
+      providers.push(...built.providers);
+      controllers.push(built.controllerClass);
     }
 
     return {
@@ -168,6 +227,8 @@ export class PaymentModule {
         ? true
         : options.registerWebhookController;
 
+    const webhookPath = options.webhookPath ?? DEFAULT_WEBHOOK_PATH;
+
     const providers: Array<FactoryProvider> = [
       {
         provide: TEC_PAYMENT_CLIENT,
@@ -183,12 +244,12 @@ export class PaymentModule {
 
     const controllers: Array<{ new (...args: any[]): unknown }> = [];
     if (shouldRegisterController) {
-      providers.push({
-        provide: WebhookController,
-        useFactory: (client: PaymentClient) => new WebhookController(client),
-        inject: [TEC_PAYMENT_CLIENT],
-      });
-      controllers.push(WebhookController);
+      const built = buildWebhookProviders(
+        createAsyncPaymentClientFactory(options),
+        webhookPath,
+      );
+      providers.push(...built.providers);
+      controllers.push(built.controllerClass);
     }
 
     return {

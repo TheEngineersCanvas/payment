@@ -8,9 +8,9 @@ Provider-agnostic TypeScript SDK for payment processing. One API, any provider.
 
 ```bash
 bun add @TheEngineersCanvas/payment
-
+```
 or
-
+```bash
 npm install @TheEngineersCanvas/payment
 ```
 

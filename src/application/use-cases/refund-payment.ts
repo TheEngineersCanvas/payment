@@ -26,6 +26,7 @@ export interface RefundPaymentInput {
   readonly reference?: string;
   readonly metadata?: Metadata;
   readonly idempotencyKey?: string;
+  readonly correlationId?: string;
 }
 
 export async function refundPayment(
@@ -41,7 +42,7 @@ export async function refundPayment(
     return err(new ValidationError("Refund amount must be greater than zero"));
   }
 
-  const correlationId = deps.idGenerator.generate();
+  const correlationId = input.correlationId ?? deps.idGenerator.generate();
 
   const providerInput = {
     paymentId: input.paymentId,
@@ -49,6 +50,7 @@ export async function refundPayment(
     reason: input.reason,
     reference: input.reference ?? correlationId,
     idempotencyKey: input.idempotencyKey,
+    correlationId,
   };
 
   const result = await deps.provider.refund(providerInput);

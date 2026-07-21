@@ -18,6 +18,7 @@ export interface RefundCreateInput {
   readonly reference?: string;
   readonly idempotencyKey?: string;
   readonly metadata?: Metadata;
+  readonly correlationId?: string;
 }
 
 export class RefundService {

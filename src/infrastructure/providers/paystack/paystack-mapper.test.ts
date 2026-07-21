@@ -63,12 +63,23 @@ describe("mapPaystackTransactionToPayment", () => {
     expect(payment.reference).toBe("order-001");
     expect(payment.amount.amount).toBe(5000000);
     expect(payment.amount.currency).toBe("NGN");
+    expect(payment.fees?.amount).toBe(75000);
+    expect(payment.fees?.currency).toBe("NGN");
+    expect(payment.netAmount?.amount).toBe(4925000);
     expect(payment.status.kind).toBe("success");
     expect(payment.customer.email).toBe("test@example.com");
     expect(payment.customer.name).toBe("John Doe");
     expect(payment.attempts).toHaveLength(1);
     expect(payment.attempts[0]?.authorizationCode).toBe("AUTH_123");
     expect(payment.channel).toBe("card");
+  });
+
+  it("omits fees and netAmount when tx.fees is null", () => {
+    const tx = { ...SAMPLE_TX, fees: null };
+    const payment = mapPaystackTransactionToPayment(tx);
+
+    expect(payment.fees).toBeUndefined();
+    expect(payment.netAmount).toBeUndefined();
   });
 
   it("maps an abandoned transaction", () => {
@@ -123,6 +134,7 @@ describe("mapInitializeResponse", () => {
 
     expect(payment.status.kind).toBe("initialized");
     expect(payment.authorizationUrl).toBe("https://checkout.paystack.com/test");
+    expect(payment.accessCode).toBe("ACC_123");
     expect(payment.amount.amount).toBe(5000);
     expect(payment.customer.email).toBe("test@example.com");
     expect(payment.id).toBeUndefined();
@@ -295,5 +307,6 @@ describe("mapInitializeResponse", () => {
     const payment = mapInitializeResponse(response, request);
     expect(payment.id).toBeUndefined();
     expect(payment.reference).toBe("order-001");
+    expect(payment.accessCode).toBe("ACC_123");
   });
 });

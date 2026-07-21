@@ -18,4 +18,5 @@ export interface PaymentRequest {
   readonly metadata?: Metadata;
   readonly expiresAt?: Date;
   readonly idempotencyKey?: string;
+  readonly correlationId?: string;
 }

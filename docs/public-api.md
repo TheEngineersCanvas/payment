@@ -49,10 +49,16 @@ Environment variable convenience:
 ```ts
 const client = createPaymentClient.fromEnv();
 
+// Checks in order:
+// 1. TEC_PAYMENT_* namespace (explicit)
+// 2. Provider-native variables (e.g., PAYSTACK_SECRET_KEY)
+
 // Reads from:
-// TEC_PAYMENT_DEFAULT_PROVIDER=paystack
-// TEC_PAYMENT_PAYSTACK_SECRET_KEY=sk_...
-// TEC_PAYMENT_PAYSTACK_WEBHOOK_SECRET=...
+// TEC_PAYMENT_DEFAULT_PROVIDER=paystack  (or PAYSTACK_* for provider config)
+// TEC_PAYMENT_PAYSTACK_SECRET_KEY=sk_... (or PAYSTACK_SECRET_KEY)
+// TEC_PAYMENT_PAYSTACK_WEBHOOK_SECRET=... (or PAYSTACK_WEBHOOK_SECRET)
+// TEC_PAYMENT_PAYSTACK_BASE_URL=...      (or PAYSTACK_BASE_URL)
+// TEC_PAYMENT_LOGGING_LEVEL=debug|info|warn|error
 ```
 
 ## PaymentClient
@@ -218,9 +224,12 @@ interface Payment {
   readonly providerId: Provider;
   readonly reference: PaymentReference;
   readonly amount: Money;
+  readonly fees?: Money;
+  readonly netAmount?: Money;
   readonly status: PaymentStatus;
   readonly customer: Customer;
   readonly authorizationUrl?: string;
+  readonly accessCode?: string;
   readonly channel?: PaymentChannel;
   readonly attempts: ReadonlyArray<PaymentAttempt>;
   readonly metadata: Metadata;
@@ -232,6 +241,9 @@ interface Payment {
 ```
 
 `id` is the provider-assigned numeric ID. It is `undefined` after `initialize()` and only populated by `verify()` / `fetch()`. Use `reference` as the stable lifecycle lookup key.
+
+- `fees` and `netAmount` are the provider-charged fee and net settlement amount (`amount - fees`). Available from `verify()` / `fetch()` / `list()` for successful transactions; `undefined` after `initialize()` and for non-successful statuses.
+- `accessCode` is the provider-issued access code (e.g., Paystack `access_code`). Available after `initialize()`; `undefined` for verified/fetched transactions.
 
 ### PaymentStatus
 
@@ -257,6 +269,7 @@ interface PaymentRequest {
   readonly metadata?: Metadata;
   readonly expiresAt?: Date;
   readonly idempotencyKey?: string;
+  readonly correlationId?: string;
 }
 
 type CustomerReference =
@@ -468,6 +481,7 @@ interface RefundRequest {
   readonly reason: string;
   readonly reference: string;
   readonly idempotencyKey?: string;
+  readonly correlationId?: string;
 }
 ```
 
@@ -507,6 +521,7 @@ interface RefundCreateInput {
   readonly reference?: string;
   readonly idempotencyKey?: string;
   readonly metadata?: Metadata;
+  readonly correlationId?: string;
 }
 ```
 

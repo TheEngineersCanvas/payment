@@ -34,7 +34,7 @@ export async function initializePayment(
     type: "payment.initialized",
     payment: result.value,
     occurredAt: deps.clock.now(),
-    correlationId: deps.idGenerator.generate(),
+    correlationId: input.correlationId ?? deps.idGenerator.generate(),
   });
 
   return result;

@@ -12,9 +12,12 @@ export interface Payment {
   readonly providerId: Provider;
   readonly reference: PaymentReference;
   readonly amount: Money;
+  readonly fees?: Money;
+  readonly netAmount?: Money;
   readonly status: PaymentStatus;
   readonly customer: Customer;
   readonly authorizationUrl?: string;
+  readonly accessCode?: string;
   readonly channel?: PaymentChannel;
   readonly attempts: ReadonlyArray<PaymentAttempt>;
   readonly metadata: Metadata;

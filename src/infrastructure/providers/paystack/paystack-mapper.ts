@@ -101,9 +101,16 @@ export function mapPaystackTransactionToPayment(tx: PaystackTransactionData): Pa
     providerId: provider,
     reference,
     amount,
+    fees: tx.fees != null
+      ? Money({ amount: tx.fees, currency: tx.currency })
+      : undefined,
+    netAmount: tx.fees != null
+      ? Money({ amount: tx.amount - tx.fees, currency: tx.currency })
+      : undefined,
     status,
     customer,
     authorizationUrl: undefined,
+    accessCode: undefined,
     channel: tx.channel as Payment["channel"],
     attempts: Object.freeze(attempts),
     metadata: tx.metadata ? Object.freeze({ ...tx.metadata }) : emptyMetadata(),
@@ -144,6 +151,7 @@ export function mapInitializeResponse(
           name: request.customer.kind === "new" ? request.customer.name : undefined,
         },
     authorizationUrl: data.authorization_url,
+    accessCode: data.access_code,
     channel: undefined,
     attempts: Object.freeze([]),
     metadata: request.metadata ? Object.freeze({ ...request.metadata }) : emptyMetadata(),

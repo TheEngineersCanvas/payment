@@ -48,6 +48,7 @@ export interface RefundRequest {
   readonly reason: string;
   readonly reference: string;
   readonly idempotencyKey?: string;
+  readonly correlationId?: string;
 }
 
 export interface RefundResult {
