@@ -7,7 +7,7 @@
 ## Architecture Rules
 
 1. **Stateless SDK.** The package owns no database, no connection pool, no mutable module-state. All state is the application's responsibility.
-2. **Provider ignorance.** Application code never imports a provider package directly. All provider access goes through `@tec/payment`.
+2. **Provider ignorance.** Application code never imports a provider package directly. All provider access goes through `@TheEngineersCanvas/payment`.
 3. **Dependency inversion.** `domain/` imports nothing outside itself. `application/` only imports `domain/` and shared types. `infrastructure/` implements `application/ports/`.
 4. **Result-over-throw.** Expected errors (provider rejection, network failure) return `Result<T, E>`. Only programmer errors (bad config, invariant broken) throw.
 5. **Branded primitives.** `Money`, `PaymentReference`, `Provider`, `MinorUnits` are all branded types constructed through validating factories. Raw `number` and `string` cannot enter the system at domain boundaries.

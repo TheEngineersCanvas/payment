@@ -4,7 +4,7 @@
 
 ## Objective
 
-Add a `@tec/payment/nestjs` subpath export providing idiomatic NestJS DI/module
+Add a `@TheEngineersCanvas/payment/nestjs` subpath export providing idiomatic NestJS DI/module
 support for the framework-agnostic payment SDK.
 
 ## Summary
@@ -74,13 +74,13 @@ override, and the logger adapter.  Subpath exports ESM + CJS + `.d.ts`.
 
 ## API Changes
 
-- **New subpath:** `@tec/payment/nestjs` imports:
+- **New subpath:** `@TheEngineersCanvas/payment/nestjs` imports:
   `PaymentModule`, `PaymentService`, `WebhookController`,
   `NestLoggerAdapter`, `TEC_PAYMENT_CLIENT`, `DEFAULT_WEBHOOK_PATH`,
   `RawBodyRequest` (type), `PaymentModuleOptions` (type),
   `PaymentModuleAsyncOptions` (type)
 
-- **No changes** to `@tec/payment` main entry.  Zero new runtime dependencies.
+- **No changes** to `@TheEngineersCanvas/payment` main entry.  Zero new runtime dependencies.
 
 ## Security Review
 

@@ -4,14 +4,14 @@ import type { Logger } from "../../public-api/index.js";
 type LogContext = Record<string, string | number | boolean | undefined>;
 
 /**
- * Bridges NestJS's `Logger` to the `@tec/payment` SDK's {@link Logger} interface.
+ * Bridges NestJS's `Logger` to the `@TheEngineersCanvas/payment` SDK's {@link Logger} interface.
  *
  * Pass an instance to the `logger` field of {@link PaymentClientConfig} to
  * route all SDK log output through Nest's structured logger.
  *
  * @example
  * ```ts
- * import { NestLoggerAdapter } from "@tec/payment/nestjs";
+ * import { NestLoggerAdapter } from "@TheEngineersCanvas/payment/nestjs";
  *
  * PaymentModule.forRoot({
  *   providers: { paystack: { secretKey: "sk_..." } },

@@ -1,6 +1,6 @@
 # Architecture
 
-`@tec/payment` follows **Hexagonal Architecture** (Ports & Adapters) combined with **Domain-Driven Design** tactical patterns.
+`@TheEngineersCanvas/payment` follows **Hexagonal Architecture** (Ports & Adapters) combined with **Domain-Driven Design** tactical patterns.
 
 ## Layers
 
@@ -12,7 +12,7 @@
                          │  imports
                          ▼
 ┌────────────────────────────────────────────────────────────┐
-│              @tec/payment  (public API)                    │
+│              @TheEngineersCanvas/payment  (public API)                    │
 │   createPaymentClient(config) → PaymentClient             │
 └────────────────────────┬───────────────────────────────────┘
                          │

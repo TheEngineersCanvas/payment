@@ -1,6 +1,6 @@
 # Provider Guide
 
-A focused guide on implementing a new payment provider adapter for `@tec/payment`.
+A focused guide on implementing a new payment provider adapter for `@TheEngineersCanvas/payment`.
 
 ## Provider Contract Checklist
 

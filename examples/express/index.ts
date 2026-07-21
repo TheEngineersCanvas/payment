@@ -1,5 +1,5 @@
 import express from "express";
-import { createPaymentClient, Money, PaymentReference } from "@tec/payment";
+import { createPaymentClient, Money, PaymentReference } from "@TheEngineersCanvas/payment";
 
 const app = express();
 

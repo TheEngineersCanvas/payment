@@ -79,7 +79,7 @@ function createAsyncPaymentClientFactory(
 const EXPORTED_PROVIDERS = [TEC_PAYMENT_CLIENT, PaymentService];
 
 /**
- * NestJS dynamic module integrating `@tec/payment` into the DI container.
+ * NestJS dynamic module integrating `@TheEngineersCanvas/payment` into the DI container.
  *
  * Registers {@link PaymentService} and the raw {@link PaymentClient}
  * behind the {@link TEC_PAYMENT_CLIENT} injection token.  The built-in

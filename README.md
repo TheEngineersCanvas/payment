@@ -1,4 +1,4 @@
-# @tec/payment
+# @TheEngineersCanvas/payment
 
 Framework-agnostic payment abstraction SDK by TheEngineersCanvas.
 
@@ -7,17 +7,17 @@ Provider-agnostic TypeScript SDK for payment processing. One API, any provider.
 ## Install
 
 ```bash
-# From npm (when published):
-bun add @tec/payment
+bun add @TheEngineersCanvas/payment
 
-# From GitHub:
-bun add github:TheEngineersCanvas/payment#main
+or
+
+npm install @TheEngineersCanvas/payment
 ```
 
 ## Quickstart
 
 ```ts
-import { createPaymentClient, Money, PaymentReference } from "@tec/payment";
+import { createPaymentClient, Money, PaymentReference } from "@TheEngineersCanvas/payment";
 
 const tec = createPaymentClient({
   providers: {
@@ -70,7 +70,7 @@ const health = await tec.health();
 ### NestJS
 
 ```ts
-import { PaymentModule } from "@tec/payment/nestjs";
+import { PaymentModule } from "@TheEngineersCanvas/payment/nestjs";
 
 @Module({
   imports: [
@@ -103,7 +103,7 @@ PaymentModule.forRootAsync({
 Then inject `PaymentService` (idiomatic) or the raw client via `@Inject(TEC_PAYMENT_CLIENT)`:
 
 ```ts
-import { PaymentService } from "@tec/payment/nestjs";
+import { PaymentService } from "@TheEngineersCanvas/payment/nestjs";
 
 @Injectable()
 export class MyService {
@@ -135,8 +135,8 @@ will fail silently. To disable the built-in controller and provide your own:
 export class AppModule {}
 
 // custom webhook controller with explicit constructor forwarding
-import { WebhookController, TEC_PAYMENT_CLIENT } from "@tec/payment/nestjs";
-import type { PaymentClient } from "@tec/payment";
+import { WebhookController, TEC_PAYMENT_CLIENT } from "@TheEngineersCanvas/payment/nestjs";
+import type { PaymentClient } from "@TheEngineersCanvas/payment";
 
 @Controller("webhooks/my-path")
 export class MyController extends WebhookController {

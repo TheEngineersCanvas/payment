@@ -1,4 +1,4 @@
-# ADR-0001: @tec/payment — Initial Architecture
+# ADR-0001: @TheEngineersCanvas/payment — Initial Architecture
 
 > **Status:** REVISION 2 — design-review revisions applied; awaiting founder re-approval.
 > **Date:** 2026-07-14 (original); 2026-07-14 (revised)
@@ -14,7 +14,7 @@
 ## 0. Repository State Observed
 
 ```
-/home/coollad49/stuffs/current/@tec/payment/
+/home/coollad49/stuffs/current/@TheEngineersCanvas/payment/
 ├── AGENTS.md          ← operating manual (read)
 ├── README.md          ← bun default
 ├── package.json       ← name="payment", module="index.ts", scripts.check-types
@@ -27,7 +27,7 @@
 
 **Observations relevant to architecture:**
 
-1. `package.json` declares `"name": "payment"` — must be renamed to `"@tec/payment"` before publish.
+1. `package.json` declares `"name": "payment"` — must be renamed to `"@TheEngineersCanvas/payment"` before publish.
 2. `tsconfig.json` is strict, ESM (`"module": "Preserve"`), bundler-style resolution. Excellent foundation; we will keep and extend.
 3. Runtime is **Bun** (dev) but the SDK must target **Node 18+** as a minimum runtime and be engine-neutral (no Bun-only APIs in published surface).
 4. No build pipeline yet. ADR §19 prescribes the toolchain.
@@ -43,7 +43,7 @@ The Engineers Canvas operates multiple products that will each need to accept pa
 - Re-invent webhook verification, idempotency, error mapping, and retry logic.
 - Couple itself permanently to one provider's API shape.
 
-`@tec/payment` is the **shared kernel** that prevents that. It is a **framework-agnostic, runtime-agnostic TypeScript SDK** that exposes a single, stable public API to applications and hides every provider behind an adapter.
+`@TheEngineersCanvas/payment` is the **shared kernel** that prevents that. It is a **framework-agnostic, runtime-agnostic TypeScript SDK** that exposes a single, stable public API to applications and hides every provider behind an adapter.
 
 ### 1.1 North-star principles
 
@@ -95,8 +95,8 @@ The Engineers Canvas operates multiple products that will each need to accept pa
 ### Future (v2+)
 
 - Subscriptions, invoices, transfers, payouts.
-- Separate provider packages: `@tec/payment-paystack`, `@tec/payment-stripe`, etc. (see §18.1).
-- Optional persistence adapter (`@tec/payment-drizzle`, `@tec/payment-prisma`).
+- Separate provider packages: `@TheEngineersCanvas/payment-paystack`, `@TheEngineersCanvas/payment-stripe`, etc. (see §18.1).
+- Optional persistence adapter (`@TheEngineersCanvas/payment-drizzle`, `@TheEngineersCanvas/payment-prisma`).
 - Idempotency store adapter.
 - Middleware/interceptor pipeline.
 - Pluggable retry policy with backoff strategies.
@@ -119,7 +119,7 @@ The Engineers Canvas operates multiple products that will each need to accept pa
                          │  imports
                          ▼
 ┌────────────────────────────────────────────────────────────┐
-│              @tec/payment  (public API)                    │
+│              @TheEngineersCanvas/payment  (public API)                    │
 │   createPaymentClient(config) → PaymentClient             │
 └────────────────────────┬───────────────────────────────────┘
                          │
@@ -150,8 +150,8 @@ The Engineers Canvas operates multiple products that will each need to accept pa
 ## 4. Folder Structure
 
 ```
-@tec/payment/
-├── package.json                       # name: @tec/payment
+@TheEngineersCanvas/payment/
+├── package.json                       # name: @TheEngineersCanvas/payment
 ├── tsconfig.json                      # extends ./tsconfig.base.json
 ├── tsconfig.base.json                 # base compiler options
 ├── tsconfig.build.json                # emit build config
@@ -329,7 +329,7 @@ The Engineers Canvas operates multiple products that will each need to accept pa
 
 ## 5. Public API
 
-### 5.1 Surface (entrypoint: `@tec/payment`)
+### 5.1 Surface (entrypoint: `@TheEngineersCanvas/payment`)
 
 ```ts
 // The ONLY entrypoint. Everything else is internal.
@@ -351,7 +351,7 @@ import {
   Currency,
   Provider,
   Metadata,
-} from '@tec/payment';
+} from '@TheEngineersCanvas/payment';
 ```
 
 **Rule:** `src/public-api/index.ts` is the *only* file that re-exports internals. Every other folder is `internal` by convention; TypeScript path mappings in `tsconfig.json` make them physically unreachable to consumers in published builds.
@@ -880,7 +880,7 @@ export function resolveProviderFactory(id: Provider): ProviderFactory;
 
 **Why a registry, not a switch statement?**
 
-- A `switch` makes adding providers require editing a closed file. The registry is **open** — a v2 `@tec/payment-stripe` package calls `registerProvider('stripe', ...)` at import time. Core never has to know.
+- A `switch` makes adding providers require editing a closed file. The registry is **open** — a v2 `@TheEngineersCanvas/payment-stripe` package calls `registerProvider('stripe', ...)` at import time. Core never has to know.
 - It keeps `createPaymentClient` ignorant of provider details.
 - It makes "what providers are available?" a queryable fact.
 
@@ -1385,7 +1385,7 @@ Real provider payloads (anonymized) committed to `tests/fixtures/`. Updating a f
 
 ### 18.1 Adding a new provider
 
-> **Rev. 2 — v2 will split providers into separate npm packages.** v1 keeps Paystack inside `@tec/payment` because shipping two packages now is overhead for one consumer. The split is a packaging change only — the runtime architecture already supports it.
+> **Rev. 2 — v2 will split providers into separate npm packages.** v1 keeps Paystack inside `@TheEngineersCanvas/payment` because shipping two packages now is overhead for one consumer. The split is a packaging change only — the runtime architecture already supports it.
 
 #### v1 (single package)
 
@@ -1411,20 +1411,20 @@ Then:
 
 ```
 packages/
-  payment/                       # @tec/payment           (core)
-  payment-paystack/              # @tec/payment-paystack  (provider)
-  payment-stripe/                # @tec/payment-stripe    (provider, future)
-  payment-flutterwave/           # @tec/payment-flutterwave (provider, future)
+  payment/                       # @TheEngineersCanvas/payment           (core)
+  payment-paystack/              # @TheEngineersCanvas/payment-paystack  (provider)
+  payment-stripe/                # @TheEngineersCanvas/payment-stripe    (provider, future)
+  payment-flutterwave/           # @TheEngineersCanvas/payment-flutterwave (provider, future)
 ```
 
 Each provider package:
 
-- Depends on `@tec/payment` as a peer.
-- Self-registers on import: `import '@tec/payment-paystack'; // calls registerProvider(...)`.
-- Has its own version cadence — Paystack API changes don't force a `@tec/payment` release.
+- Depends on `@TheEngineersCanvas/payment` as a peer.
+- Self-registers on import: `import '@TheEngineersCanvas/payment-paystack'; // calls registerProvider(...)`.
+- Has its own version cadence — Paystack API changes don't force a `@TheEngineersCanvas/payment` release.
 - Carries its own integration tests against the real sandbox.
 
-**Migration path:** v1.0 ships Paystack embedded. v1.1 moves Paystack to `@tec/payment-paystack`. The re-export from `@tec/payment` is kept for one major cycle, then removed. The contract test moves with the provider.
+**Migration path:** v1.0 ships Paystack embedded. v1.1 moves Paystack to `@TheEngineersCanvas/payment-paystack`. The re-export from `@TheEngineersCanvas/payment` is kept for one major cycle, then removed. The contract test moves with the provider.
 
 ### 18.2 Adding a new use case
 
@@ -1474,7 +1474,7 @@ dist/
 
 ```json
 {
-  "name": "@tec/payment",
+  "name": "@TheEngineersCanvas/payment",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -1536,7 +1536,7 @@ Versions `0.x.y` may include breaking changes between MINORs. Lock the version t
 There is no v0 to migrate from. This ADR defines the initial architecture. Future migrations:
 
 - **v1 → v2:** All v1 types must continue to type-check. A `v2/` sub-namespace may be added (`createPaymentClientV2`) for breaking changes during the v2 prerelease. v1 is deprecated but functional for at least 6 months.
-- **Provider swap:** Apps change `defaultProvider` only. Zero code changes anywhere else. This is the central promise of `@tec/payment`.
+- **Provider swap:** Apps change `defaultProvider` only. Zero code changes anywhere else. This is the central promise of `@TheEngineersCanvas/payment`.
 - **Adapter upgrade:** New provider versions are released as `0.x.y` patch bumps. Mapper changes are isolated to the adapter folder.
 
 ---
@@ -1611,7 +1611,7 @@ Once approved, this document becomes the **immutable blueprint**. Any deviation 
 
 **Build:**
 - Folder structure (full §4 layout).
-- `package.json` renamed to `@tec/payment`; engines pinned to `node >= 18`.
+- `package.json` renamed to `@TheEngineersCanvas/payment`; engines pinned to `node >= 18`.
 - `tsup.config.ts`, `vitest.config.ts`, `eslint.config.js` with `eslint-plugin-boundaries` enforcing §3.2 layer rules.
 - `domain/money/` with `Money`, `MinorUnits`, `Currency`, factory.
 - `domain/reference/payment-reference.ts` with factory.
@@ -1620,7 +1620,7 @@ Once approved, this document becomes the **immutable blueprint**. Any deviation 
 - `errors/` full hierarchy (all classes, no logic yet).
 - `public-api/index.ts` exporting only the types and error classes.
 
-**Acceptance:** `bun run check-types` passes. `vitest` runs the empty suite. Importing `@tec/payment` is a no-op (no side effects on import).
+**Acceptance:** `bun run check-types` passes. `vitest` runs the empty suite. Importing `@TheEngineersCanvas/payment` is a no-op (no side effects on import).
 
 ### Phase 2 — Paystack end-to-end *(target: 1 week)*
 
@@ -1669,7 +1669,7 @@ Once approved, this document becomes the **immutable blueprint**. Any deviation 
 ### Phase 5+ (post-v1, never in parallel with v1)
 
 - `0.2.0` — Pluggable retry, idempotency store, second provider.
-- `0.3.0` — Provider package split (`@tec/payment-paystack`).
+- `0.3.0` — Provider package split (`@TheEngineersCanvas/payment-paystack`).
 - `1.0.0` — API freeze, full SemVer commitment begins.
 - `1.x` — Subscriptions, transfers, persistence adapters, middleware pipeline.
 
@@ -1814,15 +1814,15 @@ SDK overhead is dwarfed by provider RTT. Optimizing SDK internals below 1ms is n
 
 ### 29.1 From `0.1.0` to `1.0.0`
 
-- **No stability guarantees.** MINOR versions may break. Pin to exact versions in `package.json` (`"@tec/payment": "0.1.3"`, not `"^0.1.3"`).
+- **No stability guarantees.** MINOR versions may break. Pin to exact versions in `package.json` (`"@TheEngineersCanvas/payment": "0.1.3"`, not `"^0.1.3"`).
 - A `CHANGELOG.md` entry is required for every change.
 - Breaking changes within `0.x` will be announced **at least one minor version ahead** when feasible (e.g. deprecate in `0.4.0`, remove in `0.5.0`).
 
 ### 29.2 From `1.0.0` onward
 
-- **Public API is SemVer-stable.** Anything exported from `@tec/payment` follows strict SemVer.
+- **Public API is SemVer-stable.** Anything exported from `@TheEngineersCanvas/payment` follows strict SemVer.
 - **Internal modules are not.** Paths under `src/` not re-exported by `public-api/index.ts` may change without notice. The published tarball only contains `dist/`, so this is enforced by packaging.
-- **Provider packages are independently versioned.** A Paystack API change releases `@tec/payment-paystack@x.y.z`; it does not force a `@tec/payment` release.
+- **Provider packages are independently versioned.** A Paystack API change releases `@TheEngineersCanvas/payment-paystack@x.y.z`; it does not force a `@TheEngineersCanvas/payment` release.
 
 ### 29.3 What "stable" means in concrete terms
 
@@ -1835,7 +1835,7 @@ SDK overhead is dwarfed by provider RTT. Optimizing SDK internals below 1ms is n
 | `Logger` interface | Same as `EventBus`. |
 | Provider contract | Adding a method = MINOR (adapters must implement; apps unaffected unless they type-narrow). Removing = MAJOR. |
 | Default config values | Changing a default that affects runtime behavior (e.g. timeout) = MINOR with a CHANGELOG note. |
-| Default provider (Paystack) | Stable until Paystack publishes a breaking API change. v2 package split moves this guarantee to `@tec/payment-paystack`. |
+| Default provider (Paystack) | Stable until Paystack publishes a breaking API change. v2 package split moves this guarantee to `@TheEngineersCanvas/payment-paystack`. |
 
 ### 29.4 Deprecation process
 

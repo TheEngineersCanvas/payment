@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { createPaymentClient, Money, PaymentReference } from "@tec/payment";
+import { createPaymentClient, Money, PaymentReference } from "@TheEngineersCanvas/payment";
 
 const app = new Hono();
 

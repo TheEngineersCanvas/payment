@@ -2,7 +2,7 @@
 
 ## Threat Model
 
-`@tec/payment` is a payment SDK. It handles API secrets, signs/verifies webhooks, and makes outbound HTTPS calls to payment providers. This document enumerates what the SDK defends against and what it explicitly leaves to the application.
+`@TheEngineersCanvas/payment` is a payment SDK. It handles API secrets, signs/verifies webhooks, and makes outbound HTTPS calls to payment providers. This document enumerates what the SDK defends against and what it explicitly leaves to the application.
 
 ## Secret Management
 

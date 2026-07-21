@@ -1,6 +1,6 @@
 /// <reference types="node" />
 
-import { createPaymentClient } from "@tec/payment";
+import { createPaymentClient } from "@TheEngineersCanvas/payment";
 import { NextResponse } from "next/server";
 
 const client = createPaymentClient({

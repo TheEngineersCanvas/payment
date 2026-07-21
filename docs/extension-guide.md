@@ -1,10 +1,10 @@
 # Extension Guide
 
-Guide for extending `@tec/payment` — adding providers, custom HTTP clients, loggers, and event buses.
+Guide for extending `@TheEngineersCanvas/payment` — adding providers, custom HTTP clients, loggers, and event buses.
 
 ## Architecture Recap
 
-`@tec/payment` follows hexagonal (ports & adapters) architecture:
+`@TheEngineersCanvas/payment` follows hexagonal (ports & adapters) architecture:
 
 ```
 Application Code → public-api/ → application/ (use cases + ports) → infrastructure/ (adapters)
@@ -99,8 +99,8 @@ registerProvider("my_provider", {
 Import the register file before calling `createPaymentClient`:
 
 ```ts
-import "@tec/payment/my-provider/register"; // auto-registers
-import { createPaymentClient } from "@tec/payment";
+import "@TheEngineersCanvas/payment/my-provider/register"; // auto-registers
+import { createPaymentClient } from "@TheEngineersCanvas/payment";
 ```
 
 ### 6. Contract test

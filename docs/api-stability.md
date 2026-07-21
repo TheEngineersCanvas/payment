@@ -1,6 +1,6 @@
 # API Stability
 
-Public API stability guarantees and migration timeline for `@tec/payment`.
+Public API stability guarantees and migration timeline for `@TheEngineersCanvas/payment`.
 
 ## Public API Surface
 
@@ -96,7 +96,7 @@ The `dependencies` field in `package.json` will **always** be empty in v1.x. Add
 
 v2 will make these breaking changes (no timeline):
 
-1. **Provider packages split.** `@tec/payment-paystack` as a separate installable package. Core becomes a shell with `ProviderFactory` registration.
+1. **Provider packages split.** `@TheEngineersCanvas/payment-paystack` as a separate installable package. Core becomes a shell with `ProviderFactory` registration.
 2. **Pluggable retry.** `FetchHttpClient` gains configurable backoff strategies.
 3. **Middleware pipeline.** Interceptor pattern for request/response hooks.
 4. **Subscription support.** New `SubscriptionsService` with recurring payment methods.

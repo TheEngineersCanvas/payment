@@ -58,9 +58,9 @@ export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
 ## LL-005: Public API barrel must mirror docs/public-api.md; both must be guarded by a contract test
 
-**Problem:** The `public-api/index.ts` barrel was missing 20+ types that were documented in `docs/public-api.md` and used in the README examples. TypeScript consumers importing `Payment`, `HealthStatus`, `PaymentStatus`, etc. from `@tec/payment` got `Module has no exported member`. This was only caught after a detailed manual code review of every type used in the docs vs. every `export` line in the barrel.
+**Problem:** The `public-api/index.ts` barrel was missing 20+ types that were documented in `docs/public-api.md` and used in the README examples. TypeScript consumers importing `Payment`, `HealthStatus`, `PaymentStatus`, etc. from `@TheEngineersCanvas/payment` got `Module has no exported member`. This was only caught after a detailed manual code review of every type used in the docs vs. every `export` line in the barrel.
 
-**Root Cause:** The barrel was hand-maintained without an automated check. As new types were added to the codebase and documented, nobody validated that the barrel kept pace. The build (`tsup`) and type checker (`tsc --noEmit`) both pass even when the barrel is incomplete because internal imports work fine — the bug only surfaces when an external consumer tries to import from `@tec/payment`.
+**Root Cause:** The barrel was hand-maintained without an automated check. As new types were added to the codebase and documented, nobody validated that the barrel kept pace. The build (`tsup`) and type checker (`tsc --noEmit`) both pass even when the barrel is incomplete because internal imports work fine — the bug only surfaces when an external consumer tries to import from `@TheEngineersCanvas/payment`.
 
 **Resolution:** 
 1. Exported all missing types from the public barrel.

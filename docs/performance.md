@@ -1,6 +1,6 @@
 # Performance
 
-Performance characteristics of `@tec/payment`.
+Performance characteristics of `@TheEngineersCanvas/payment`.
 
 ## Zero-Overhead Design
 

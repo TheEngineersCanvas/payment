@@ -1,6 +1,6 @@
 # Migration Guide
 
-Migrating from direct provider SDK usage to `@tec/payment`.
+Migrating from direct provider SDK usage to `@TheEngineersCanvas/payment`.
 
 ## Why Migrate
 
@@ -50,10 +50,10 @@ app.post("/webhooks/paystack", express.raw({ type: "application/json" }), async 
 });
 ```
 
-## After: @tec/payment
+## After: @TheEngineersCanvas/payment
 
 ```ts
-import { createPaymentClient, Money, PaymentReference } from "@tec/payment";
+import { createPaymentClient, Money, PaymentReference } from "@TheEngineersCanvas/payment";
 
 const client = createPaymentClient({
   providers: {

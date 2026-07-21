@@ -1,4 +1,4 @@
-# @tec/payment Examples
+# @TheEngineersCanvas/payment Examples
 
 Example integrations for popular Node.js frameworks.
 
@@ -49,11 +49,11 @@ Each example is self-contained. Copy the relevant files into your project.
 All examples require:
 
 ```bash
-# From npm (when published):
-bun add @tec/payment
+bun add @TheEngineersCanvas/payment
 
-# From GitHub:
-bun add github:TheEngineersCanvas/payment#main
+or
+
+npm install @TheEngineersCanvas/payment
 ```
 
 Set environment variables:

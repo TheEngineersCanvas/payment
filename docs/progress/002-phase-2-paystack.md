@@ -144,7 +144,7 @@ bun run build
 
 **Manual smoke test:**
 ```ts
-import { createPaymentClient, Money, PaymentReference } from '@tec/payment';
+import { createPaymentClient, Money, PaymentReference } from '@TheEngineersCanvas/payment';
 
 const client = createPaymentClient({
   providers: { paystack: { secretKey: process.env.PAYSTACK_SECRET_KEY! } },
@@ -174,7 +174,7 @@ if (result.ok) {
 - Loosen `PaymentReference` regex if real-world references need more characters.
 - Add `refund` and `webhook` live implementations (Phase 3).
 - Add ESLint with `eslint-plugin-boundaries` enforcing layer rules (Phase 4).
-- v2: split Paystack to `@tec/payment-paystack` package.
+- v2: split Paystack to `@TheEngineersCanvas/payment-paystack` package.
 
 ## Related Tasks
 

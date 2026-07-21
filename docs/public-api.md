@@ -1,13 +1,13 @@
 # Public API
 
-Complete public API reference for `@tec/payment`.
+Complete public API reference for `@TheEngineersCanvas/payment`.
 
 ## createPaymentClient(config)
 
 Factory function. Returns a `PaymentClient`.
 
 ```ts
-import { createPaymentClient } from "@tec/payment";
+import { createPaymentClient } from "@TheEngineersCanvas/payment";
 
 const client = createPaymentClient({
   providers: {

@@ -1,5 +1,5 @@
 /**
- * Injection token for the `@tec/payment` {@link PaymentClient} instance.
+ * Injection token for the `@TheEngineersCanvas/payment` {@link PaymentClient} instance.
  *
  * Inject the raw client when you need direct access to the SDK's service
  * facades (`payments`, `refunds`, `webhooks`, `events`, `health`).
@@ -7,8 +7,8 @@
  * @example
  * ```ts
  * import { Inject } from "@nestjs/common";
- * import { TEC_PAYMENT_CLIENT } from "@tec/payment/nestjs";
- * import type { PaymentClient } from "@tec/payment";
+ * import { TEC_PAYMENT_CLIENT } from "@TheEngineersCanvas/payment/nestjs";
+ * import type { PaymentClient } from "@TheEngineersCanvas/payment";
  *
  * @Injectable()
  * export class MyService {

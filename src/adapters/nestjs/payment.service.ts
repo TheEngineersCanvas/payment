@@ -3,18 +3,18 @@ import type { PaymentClient, HealthStatus } from "../../public-api/index.js";
 import { TEC_PAYMENT_CLIENT } from "./constants.js";
 
 /**
- * Injectable NestJS service wrapping the `@tec/payment` client.
+ * Injectable NestJS service wrapping the `@TheEngineersCanvas/payment` client.
  *
  * Delegates every sub-service (`payments`, `refunds`, `webhooks`,
  * `events`, `health`) directly to the underlying {@link PaymentClient}.
- * {@link https://www.npmjs.com/package/@tec/payment Result} objects
+ * {@link https://www.npmjs.com/package/@TheEngineersCanvas/payment Result} objects
  * are returned as-is — the consuming application decides how to handle
  * success and failure cases.
  *
  * @example
  * ```ts
- * import { PaymentService } from "@tec/payment/nestjs";
- * import { Money, PaymentReference } from "@tec/payment";
+ * import { PaymentService } from "@TheEngineersCanvas/payment/nestjs";
+ * import { Money, PaymentReference } from "@TheEngineersCanvas/payment";
  *
  * @Injectable()
  * export class CheckoutService {

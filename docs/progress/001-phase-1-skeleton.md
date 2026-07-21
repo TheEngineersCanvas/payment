@@ -2,7 +2,7 @@
 
 - **Title:** Phase 1: Skeleton & Invariants
 - **Date:** 2026-07-14
-- **Objective:** Establish the folder structure, type system, error hierarchy, config tooling, and public API barrel for `@tec/payment`. Zero logic, types only.
+- **Objective:** Establish the folder structure, type system, error hierarchy, config tooling, and public API barrel for `@TheEngineersCanvas/payment`. Zero logic, types only.
 - **Status:** Complete
 
 ## Summary
@@ -13,7 +13,7 @@ Created 22 source files, 2 test files, and 3 config files. The package compiles 
 
 | File | Action | Description |
 |------|--------|-------------|
-| `package.json` | Updated | Renamed to `@tec/payment`, added vitest/tsup/@types/node devDeps, exports field |
+| `package.json` | Updated | Renamed to `@TheEngineersCanvas/payment`, added vitest/tsup/@types/node devDeps, exports field |
 | `tsconfig.json` | Replaced | ES2022 target, NodeNext module, strict, `isolatedModules` (no `verbatimModuleSyntax`) |
 | `tsup.config.ts` | Created | ESM + CJS + d.ts, entry `src/public-api/index.ts` |
 | `vitest.config.ts` | Created | Includes `src/**/*.test.ts` and `tests/**/*.spec.ts` |

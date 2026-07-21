@@ -97,7 +97,7 @@ bun run test -- tests/integration/webhook-flow.spec.ts
 **Manual webhook smoke test:**
 ```ts
 import { createHmac } from "node:crypto";
-import { createPaymentClient } from "@tec/payment";
+import { createPaymentClient } from "@TheEngineersCanvas/payment";
 
 const secret = "my_webhook_secret";
 const client = createPaymentClient({

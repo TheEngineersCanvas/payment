@@ -1,6 +1,6 @@
 # Versioning
 
-`@tec/payment` follows [Semantic Versioning 2.0.0](https://semver.org/).
+`@TheEngineersCanvas/payment` follows [Semantic Versioning 2.0.0](https://semver.org/).
 
 ## Version Format
 
@@ -74,7 +74,7 @@ If your application imports from paths beginning with `../../domain/`, `../../in
 
 Planned for v2 (no timeline):
 
-- Provider packages split to `@tec/payment-paystack`, `@tec/payment-stripe`
+- Provider packages split to `@TheEngineersCanvas/payment-paystack`, `@TheEngineersCanvas/payment-stripe`
 - Pluggable retry with backoff strategies
 - Circuit breaker and rate limiter
 - Subscription/recurring payment support

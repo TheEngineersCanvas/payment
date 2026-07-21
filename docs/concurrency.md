@@ -1,6 +1,6 @@
 # Concurrency
 
-Concurrency model and thread safety of `@tec/payment`.
+Concurrency model and thread safety of `@TheEngineersCanvas/payment`.
 
 ## Single-Threaded Event Loop
 

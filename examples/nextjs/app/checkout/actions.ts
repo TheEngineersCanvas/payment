@@ -2,7 +2,7 @@
 
 "use server";
 
-import { createPaymentClient, Money, PaymentReference } from "@tec/payment";
+import { createPaymentClient, Money, PaymentReference } from "@TheEngineersCanvas/payment";
 
 const client = createPaymentClient({
   providers: {
