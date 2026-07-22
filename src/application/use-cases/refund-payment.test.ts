@@ -21,6 +21,12 @@ function makeDeps(overrides?: Partial<RefundPaymentDeps>): RefundPaymentDeps {
       refund: vi.fn(),
       parseWebhook: vi.fn(),
       health: vi.fn(),
+      listBankCodes: vi.fn(),
+      resolveAccount: vi.fn(),
+      createRecipient: vi.fn(),
+      initiateTransfer: vi.fn(),
+      fetchTransfer: vi.fn(),
+      listTransfers: vi.fn(),
     },
     eventBus: { emit: vi.fn(), on: vi.fn(), onAny: vi.fn() },
     logger: {

@@ -78,11 +78,24 @@ import {
   type RefundFailed,
   type WebhookInput,
   type RefundCreateInput,
+  type Transfer,
+  type TransferStatus,
+  type TransferStatusKind,
+  type TransferRecipient,
+  type BankCode,
+  type ResolveAccountResult,
+  type CreateRecipientInput,
+  type InitiateTransferInput,
+  isFinalTransferStatus,
+  type TransferInitiated,
+  type TransferSucceeded,
+  type TransferFailed,
+  type TransferReversed,
 } from "../../src/public-api/index.js";
 
 describe("public-api barrel exports", () => {
   it("exports all documented value exports", () => {
-    expect(VERSION).toBe("0.1.0-RC3");
+    expect(VERSION).toBe("0.1.0-RC4");
     expect(typeof createPaymentClient).toBe("function");
     expect(typeof Money).toBe("function");
     expect(typeof MinorUnits).toBe("function");
@@ -112,6 +125,7 @@ describe("public-api barrel exports", () => {
     expect(typeof isFinalStatus).toBe("function");
     expect(typeof isTransitionAllowed).toBe("function");
     expect(typeof isFinalRefundStatus).toBe("function");
+    expect(typeof isFinalTransferStatus).toBe("function");
     expect(typeof RefundReason).toBe("function");
   });
 
@@ -163,6 +177,18 @@ describe("public-api barrel exports", () => {
       RefundFailed: null as RefundFailed | null,
       WebhookInput: null as WebhookInput | null,
       RefundCreateInput: null as RefundCreateInput | null,
+      Transfer: null as Transfer | null,
+      TransferStatus: null as TransferStatus | null,
+      TransferStatusKind: null as TransferStatusKind | null,
+      TransferRecipient: null as TransferRecipient | null,
+      BankCode: null as BankCode | null,
+      ResolveAccountResult: null as ResolveAccountResult | null,
+      CreateRecipientInput: null as CreateRecipientInput | null,
+      InitiateTransferInput: null as InitiateTransferInput | null,
+      TransferInitiated: null as TransferInitiated | null,
+      TransferSucceeded: null as TransferSucceeded | null,
+      TransferFailed: null as TransferFailed | null,
+      TransferReversed: null as TransferReversed | null,
     };
 
     for (const name of Object.keys(types)) {
@@ -270,5 +296,13 @@ describe("public-api barrel exports", () => {
     };
     expect(req.correlationId).toBe("corr-123");
     expect(req.idempotencyKey).toBe("key-123");
+  });
+
+  it("isFinalTransferStatus returns true for final statuses", () => {
+    expect(isFinalTransferStatus({ kind: "succeeded", settledAt: new Date() })).toBe(true);
+    expect(isFinalTransferStatus({ kind: "failed", reason: "err", failedAt: new Date() })).toBe(true);
+    expect(isFinalTransferStatus({ kind: "reversed", reversedAt: new Date() })).toBe(true);
+    expect(isFinalTransferStatus({ kind: "pending" })).toBe(false);
+    expect(isFinalTransferStatus({ kind: "processing" })).toBe(false);
   });
 });

@@ -222,9 +222,11 @@ function normalizeWebhookType(event: string): string {
     case "refund.pending":
       return "refund.initiated";
     case "transfer.success":
+      return "transfer.succeeded";
     case "transfer.failed":
+      return "transfer.failed";
     case "transfer.reversed":
-      return "payment.unknown";
+      return "transfer.reversed";
     default:
       return "payment.unknown";
   }

@@ -1,12 +1,12 @@
 # Project Memory: Current State
 
-**Last updated:** 2026-07-21
+**Last updated:** 2026-07-22
 
 ---
 
 ## Current Sprint
 
-v0.1.0-RC3 — Phase 6.1: SDK polish (fees, accessCode, correlation IDs, webhook logging/path, env fallback)
+v0.1.0-RC4 — Phase 6.2: Transfers domain
 
 ## Completed Features
 
@@ -17,14 +17,15 @@ v0.1.0-RC3 — Phase 6.1: SDK polish (fees, accessCode, correlation IDs, webhook
 - [x] Phase 5 (v0.1.0-RC1): Fixed Paystack business error corruption in initialize/list/refund mappers; real timestamps in PaymentStatus discriminators (paidAt, failedAt, refundedAt); FetchHttpClient emits specialized error subclasses (ProviderRateLimitError etc.); public barrel now exports all documented types (Payment, PaymentStatus, Customer, PaymentRequest, HealthStatus, Page, ListQuery, etc.); Payment.id is undefined after initialize; metadata booleans forwarded; correlationId + Idempotency-Key support; user-supplied refund reference; webhook headers widened; public-api.spec.ts contract test; http-client-errors.spec.ts
 - [x] NestJS adapter: PaymentModule (forRoot / forRootAsync), PaymentService injectable, WebhookController (opt-out), NestLoggerAdapter, RawBodyRequest type, JSDoc on all public exports, 18 tests (DI resolution, positive/negative webhook, subclass override), example under examples/nestjs/, subpath export `@TheEngineersCanvas/payment/nestjs`
 - [x] Phase 6.1 (v0.1.0-RC3): Payment.fees, Payment.netAmount, Payment.accessCode; PaymentRequest.correlationId; RefundCreateInput.correlationId; RefundRequest.correlationId; Paystack mapper surfaces access_code, fees, netAmount; Paystack adapter honors request-level correlationId; fromEnv() falls back to provider-native env vars (PAYSTACK_SECRET_KEY, etc.); NestJS webhookPath + webhook logging (debug/warn); docs/public-api.md updated; contract test + mapper test updated
+- [x] Phase 6.2 (v0.1.0-RC4): Transfers domain: Transfer, TransferStatus, TransferRecipient, BankCode; 4 transfer events (TransferInitiated, TransferSucceeded, TransferFailed, TransferReversed); PaymentProvider extended with listBankCodes, resolveAccount, createRecipient, initiateTransfer, fetchTransfer, listTransfers; ProviderCapabilities gains supportsTransfers + supportedTransferCurrencies; TransferService facade via client.transfers; Paystack transfer mapper + adapter methods; webhook mapper fixed (transfer.* → transfer.succeeded|failed|reversed); 10 mapper tests + 4 use-case tests + 3 webhook tests + contract test updates; public-api.md and README.md updated
 
 ## Current Feature
 
-Phase 6.1 — SDK polish (COMPLETE)
+Phase 6.2 — Transfers domain (COMPLETE)
 
 ## Next Planned Feature
 
-Phase 6.2 — Transfers domain (listBankCodes, resolveAccount, createRecipient, initiate, fetch, list)
+Phase 6.3 — DX improvements (mock clients, throttler docs)
 
 ## Known Blockers
 
@@ -34,9 +35,9 @@ None.
 
 - **Build:** `tsup` produces clean ESM + CJS + .d.ts (no src/ leaks)
 - **Types:** `tsc --noEmit` passes (0 errors)
-- **Tests:** 119 unit/contract/integration tests pass (CI-safe)
+- **Tests:** 137 unit/contract/integration tests pass (CI-safe)
 - **Lint:** ESLint passes (0 errors, 0 warnings) with boundary enforcement
 - **Coverage:** `@vitest/coverage-v8` with thresholds (65% statements, 60% branches, 65% functions, 65% lines)
 - **Dependencies:** Zero runtime dependencies, zero npm packages in `dependencies`
 - **Docs:** 10 documentation files + 4 examples + contract test for public API surface
-- **Version:** 0.1.0-RC3
+- **Version:** 0.1.0-RC4

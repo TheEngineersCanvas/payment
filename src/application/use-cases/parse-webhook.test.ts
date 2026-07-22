@@ -34,6 +34,12 @@ function makeDeps(
     refund: vi.fn(),
     parseWebhook: parseWebhookImpl ?? vi.fn(),
     health: vi.fn(),
+    listBankCodes: vi.fn(),
+    resolveAccount: vi.fn(),
+    createRecipient: vi.fn(),
+    initiateTransfer: vi.fn(),
+    fetchTransfer: vi.fn(),
+    listTransfers: vi.fn(),
   };
 
   return {

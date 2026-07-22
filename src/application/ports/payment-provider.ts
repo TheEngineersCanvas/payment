@@ -5,7 +5,11 @@ import type { PaymentRequest } from "../../domain/payment/payment-request.js";
 import type { PaymentChannel } from "../../domain/payment/payment-channel.js";
 import type { Currency } from "../../domain/money/currency.js";
 import type { Money } from "../../domain/money/money.js";
+import type { Metadata } from "../../domain/metadata/metadata.js";
 import type { WebhookEvent } from "../../domain/webhook/webhook-event.js";
+import type { Transfer } from "../../domain/transfer/transfer.js";
+import type { TransferRecipient } from "../../domain/transfer/transfer-recipient.js";
+import type { BankCode } from "../../domain/transfer/bank-code.js";
 import type { Result } from "../../shared/result/result.js";
 import type { PaymentError } from "../../errors/payment-error.js";
 import type { WebhookValidationError } from "../../errors/webhook-validation-error.js";
@@ -15,9 +19,11 @@ export interface ProviderCapabilities {
   readonly supportsRecurring: boolean;
   readonly supportsPartialRefund: boolean;
   readonly supportsWebhooks: boolean;
+  readonly supportsTransfers: boolean;
   readonly maxAmount?: Money;
   readonly supportedCurrencies: ReadonlyArray<Currency>;
   readonly supportedChannels: ReadonlyArray<PaymentChannel>;
+  readonly supportedTransferCurrencies: ReadonlyArray<Currency>;
 }
 
 export interface ListQuery {
@@ -51,6 +57,25 @@ export interface RefundRequest {
   readonly correlationId?: string;
 }
 
+export interface CreateRecipientInput {
+  readonly name: string;
+  readonly accountNumber: string;
+  readonly bankCode: string;
+  readonly currency: Currency;
+  readonly metadata?: Metadata;
+}
+
+export interface InitiateTransferInput {
+  readonly amount: Money;
+  readonly recipientCode: string;
+  readonly reference: string;
+  readonly reason?: string;
+  readonly currency: Currency;
+  readonly correlationId?: string;
+  readonly idempotencyKey?: string;
+  readonly metadata?: Metadata;
+}
+
 export interface RefundResult {
   readonly id: string;
   readonly paymentId: string;
@@ -77,4 +102,15 @@ export interface PaymentProvider {
   ): Promise<Result<WebhookEvent, WebhookValidationError>>;
   fetchRefund?(refundId: string): Promise<Result<RefundResult, PaymentError>>;
   health(): Promise<HealthStatus>;
+
+  listBankCodes(input: { currency: Currency }): Promise<Result<ReadonlyArray<BankCode>, PaymentError>>;
+  resolveAccount(input: { accountNumber: string; bankCode: string; currency: Currency }): Promise<Result<ResolveAccountResult, PaymentError>>;
+  createRecipient(input: CreateRecipientInput): Promise<Result<TransferRecipient, PaymentError>>;
+  initiateTransfer(input: InitiateTransferInput): Promise<Result<Transfer, PaymentError>>;
+  fetchTransfer(id: string): Promise<Result<Transfer, PaymentError>>;
+  listTransfers(query: ListQuery): Promise<Result<Page<Transfer>, PaymentError>>;
+}
+
+export interface ResolveAccountResult {
+  readonly accountName: string;
 }

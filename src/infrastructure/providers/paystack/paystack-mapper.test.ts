@@ -181,6 +181,36 @@ describe("mapPaystackWebhookEvent", () => {
     const event = mapPaystackWebhookEvent(webhook);
     expect(event.type).toBe("payment.failed");
   });
+
+  it("maps transfer.success to transfer.succeeded", () => {
+    const webhook: PaystackWebhookEvent = {
+      event: "transfer.success",
+      data: SAMPLE_TX,
+    };
+
+    const event = mapPaystackWebhookEvent(webhook);
+    expect(event.type).toBe("transfer.succeeded");
+  });
+
+  it("maps transfer.failed to transfer.failed", () => {
+    const webhook: PaystackWebhookEvent = {
+      event: "transfer.failed",
+      data: SAMPLE_TX,
+    };
+
+    const event = mapPaystackWebhookEvent(webhook);
+    expect(event.type).toBe("transfer.failed");
+  });
+
+  it("maps transfer.reversed to transfer.reversed", () => {
+    const webhook: PaystackWebhookEvent = {
+      event: "transfer.reversed",
+      data: SAMPLE_TX,
+    };
+
+    const event = mapPaystackWebhookEvent(webhook);
+    expect(event.type).toBe("transfer.reversed");
+  });
 });
 
 describe("mapPaystackRefundResponse", () => {

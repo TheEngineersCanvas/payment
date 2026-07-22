@@ -5,6 +5,7 @@ import type { PaymentClient } from "../application/payment-client.js";
 import { PaymentService } from "../application/services/payment-service.js";
 import { RefundService } from "../application/services/refund-service.js";
 import { WebhookService } from "../application/services/webhook-service.js";
+import { TransferService } from "../application/services/transfer-service.js";
 import { ProviderRegistry } from "../application/services/provider-registry.js";
 import { EventSubscriptionView } from "../application/services/event-subscription-view.js";
 import { createProviderFactory } from "../infrastructure/providers/provider-factory.js";
@@ -108,12 +109,22 @@ export function createPaymentClient(config: PaymentClientConfig): PaymentClient 
 
   const refunds = new RefundService(defaultProvider, serviceDeps);
   const webhooks = new WebhookService(providerMap, serviceDeps);
+
+  const transferDeps = {
+    eventBus,
+    logger: logger.child({ component: "transfer-service" }),
+    clock,
+    idGenerator,
+  };
+  const transfers = new TransferService(defaultProvider, transferDeps.eventBus, transferDeps.logger, transferDeps.clock, transferDeps.idGenerator);
+
   const events = new EventSubscriptionView(eventBus);
 
   return {
     payments,
     refunds,
     webhooks,
+    transfers,
     events,
     providers,
     async health(): Promise<ReadonlyArray<HealthStatus>> {

@@ -65,6 +65,27 @@ const refundResult = await tec.refunds.create({
 
 // Health
 const health = await tec.health();
+
+// Transfers
+const banks = await tec.transfers.listBankCodes(Currency("NGN"));
+const resolved = await tec.transfers.resolveAccount({
+  accountNumber: "0123456789",
+  bankCode: "044",
+  currency: Currency("NGN"),
+});
+const recipient = await tec.transfers.createRecipient({
+  name: "John Doe",
+  accountNumber: "0123456789",
+  bankCode: "044",
+  currency: Currency("NGN"),
+});
+const transfer = await tec.transfers.initiate({
+  amount: Money({ amount: 1000000, currency: "NGN" }),
+  recipientCode: recipient.result?.code ?? "",
+  reference: "payout-001",
+  reason: "Monthly payout",
+  currency: Currency("NGN"),
+});
 ```
 
 ### NestJS

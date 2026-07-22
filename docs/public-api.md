@@ -67,6 +67,7 @@ const client = createPaymentClient.fromEnv();
 |----------|------|-------------|
 | `payments` | `PaymentService` | Initialize, verify, fetch, list payments |
 | `refunds` | `RefundService` | Create and fetch refunds |
+| `transfers` | `TransferService` | List bank codes, resolve accounts, create recipients, initiate/fetch/list transfers |
 | `webhooks` | `WebhookService` | Receive and verify webhooks |
 | `events` | `EventSubscription` | Subscribe to domain events |
 | `providers` | `ProviderRegistry` | Introspect configured providers |
@@ -159,6 +160,80 @@ const result = await client.refunds.fetch("ref-500");
 
 Returns the current `Refund` status. Requires provider support.
 
+## TransferService
+
+```ts
+interface TransferService {
+  listBankCodes(currency: Currency): Promise<Result<ReadonlyArray<BankCode>, PaymentError>>;
+  resolveAccount(input: { accountNumber: string; bankCode: string; currency: Currency }): Promise<Result<ResolveAccountResult, PaymentError>>;
+  createRecipient(input: CreateRecipientInput): Promise<Result<TransferRecipient, PaymentError>>;
+  initiate(input: InitiateTransferInput): Promise<Result<Transfer, PaymentError>>;
+  fetch(id: string): Promise<Result<Transfer, PaymentError>>;
+  list(query: ListQuery): Promise<Result<Page<Transfer>, PaymentError>>;
+}
+```
+
+### listBankCodes(currency)
+
+```ts
+const result = await client.transfers.listBankCodes(Currency("NGN"));
+// returns BankCode[]: [{ code: "044", name: "Access Bank", currency: "NGN" }, ...]
+```
+
+Requires `ProviderCapabilities.supportsTransfers` to be true and the currency to be in `supportedTransferCurrencies`.
+
+### resolveAccount(input)
+
+```ts
+const result = await client.transfers.resolveAccount({
+  accountNumber: "0123456789",
+  bankCode: "044",
+  currency: Currency("NGN"),
+});
+// returns { accountName: "JOHN DOE" }
+```
+
+### createRecipient(input)
+
+```ts
+const result = await client.transfers.createRecipient({
+  name: "John Doe",
+  accountNumber: "0123456789",
+  bankCode: "044",
+  currency: Currency("NGN"),
+});
+// returns TransferRecipient with recipient.code
+```
+
+### initiate(input)
+
+```ts
+const result = await client.transfers.initiate({
+  amount: Money({ amount: 1000000, currency: "NGN" }),
+  recipientCode: "RCP_abc123",
+  reference: "payout-001",
+  reason: "Monthly payout",
+  currency: Currency("NGN"),
+});
+// returns Transfer with status
+```
+
+Emits `transfer.initiated` (pending/processing) or `transfer.failed` events. Accepts `correlationId` and `idempotencyKey`.
+
+### fetch(id)
+
+```ts
+const result = await client.transfers.fetch("500");
+// returns Transfer
+```
+
+### list(query)
+
+```ts
+const result = await client.transfers.list({ page: 1, perPage: 50 });
+// returns Page<Transfer>
+```
+
 ## WebhookService
 
 ```ts
@@ -203,6 +278,10 @@ interface EventSubscription {
 | `refund.initiated` | `{ type, refund, occurredAt, correlationId }` |
 | `refund.succeeded` | `{ type, refund, occurredAt, correlationId }` |
 | `refund.failed` | `{ type, refund, reason, occurredAt, correlationId }` |
+| `transfer.initiated` | `{ type, transfer, occurredAt, correlationId }` |
+| `transfer.succeeded` | `{ type, transfer, occurredAt, correlationId }` |
+| `transfer.failed` | `{ type, transfer, reason, occurredAt, correlationId }` |
+| `transfer.reversed` | `{ type, transfer, occurredAt, correlationId }` |
 
 ```ts
 client.events.on("payment.succeeded", (event) => {
@@ -466,9 +545,11 @@ interface ProviderCapabilities {
   readonly supportsRecurring: boolean;
   readonly supportsPartialRefund: boolean;
   readonly supportsWebhooks: boolean;
+  readonly supportsTransfers: boolean;
   readonly maxAmount?: Money;
   readonly supportedCurrencies: ReadonlyArray<Currency>;
   readonly supportedChannels: ReadonlyArray<PaymentChannel>;
+  readonly supportedTransferCurrencies: ReadonlyArray<Currency>;
 }
 ```
 
@@ -522,6 +603,96 @@ interface RefundCreateInput {
   readonly idempotencyKey?: string;
   readonly metadata?: Metadata;
   readonly correlationId?: string;
+}
+```
+
+### Transfer
+
+```ts
+interface Transfer {
+  readonly id: string;
+  readonly providerId: Provider;
+  readonly amount: Money;
+  readonly recipient: TransferRecipient;
+  readonly status: TransferStatus;
+  readonly reference: string;
+  readonly reason?: string;
+  readonly createdAt: Date;
+  readonly completedAt?: Date;
+  readonly failureReason?: string;
+  readonly metadata: Metadata;
+}
+```
+
+### TransferStatus
+
+```ts
+type TransferStatus =
+  | { readonly kind: "pending" }
+  | { readonly kind: "processing" }
+  | { readonly kind: "succeeded"; readonly settledAt: Date }
+  | { readonly kind: "failed"; readonly reason: string; readonly failedAt: Date }
+  | { readonly kind: "reversed"; readonly reversedAt: Date };
+```
+
+`isFinalTransferStatus(status)` returns `true` for `succeeded`, `failed`, and `reversed`.
+
+### TransferRecipient
+
+```ts
+interface TransferRecipient {
+  readonly code: string;
+  readonly name: string;
+  readonly accountNumber: string;
+  readonly bankCode: string;
+  readonly currency: Currency;
+  readonly createdAt: Date;
+  readonly metadata: Metadata;
+}
+```
+
+### BankCode
+
+```ts
+interface BankCode {
+  readonly code: string;
+  readonly name: string;
+  readonly currency: Currency;
+}
+```
+
+### CreateRecipientInput
+
+```ts
+interface CreateRecipientInput {
+  readonly name: string;
+  readonly accountNumber: string;
+  readonly bankCode: string;
+  readonly currency: Currency;
+  readonly metadata?: Metadata;
+}
+```
+
+### InitiateTransferInput
+
+```ts
+interface InitiateTransferInput {
+  readonly amount: Money;
+  readonly recipientCode: string;
+  readonly reference: string;
+  readonly reason?: string;
+  readonly currency: Currency;
+  readonly correlationId?: string;
+  readonly idempotencyKey?: string;
+  readonly metadata?: Metadata;
+}
+```
+
+### ResolveAccountResult
+
+```ts
+interface ResolveAccountResult {
+  readonly accountName: string;
 }
 ```
 

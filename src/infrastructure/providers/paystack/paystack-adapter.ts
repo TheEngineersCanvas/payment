@@ -1,10 +1,13 @@
-import type { PaymentProvider, ProviderCapabilities, ListQuery, Page, HealthStatus, RefundRequest, RefundResult } from "../../../application/ports/payment-provider.js";
+import type { PaymentProvider, ProviderCapabilities, ListQuery, Page, HealthStatus, RefundRequest, RefundResult, CreateRecipientInput, InitiateTransferInput, ResolveAccountResult } from "../../../application/ports/payment-provider.js";
 import type { Provider } from "../../../domain/provider/provider.js";
 import type { Payment } from "../../../domain/payment/payment.js";
 import type { PaymentRequest } from "../../../domain/payment/payment-request.js";
 import type { PaymentReference } from "../../../domain/reference/payment-reference.js";
 import type { Currency } from "../../../domain/money/currency.js";
 import type { WebhookEvent } from "../../../domain/webhook/webhook-event.js";
+import type { Transfer } from "../../../domain/transfer/transfer.js";
+import type { TransferRecipient } from "../../../domain/transfer/transfer-recipient.js";
+import type { BankCode } from "../../../domain/transfer/bank-code.js";
 import type { HttpClient } from "../../../application/ports/http-client.js";
 import type { Logger } from "../../../application/ports/logger.js";
 import type { Clock } from "../../../application/ports/clock.js";
@@ -30,6 +33,21 @@ import {
   mapPaystackRefundResponse,
 } from "./paystack-mapper.js";
 import { parsePaystackWebhook } from "./paystack-webhook.js";
+import type {
+  PaystackBankListResponse,
+  PaystackResolveAccountResponse,
+  PaystackCreateRecipientRequest,
+  PaystackCreateRecipientResponse,
+  PaystackTransferRequest,
+  PaystackTransferResponse,
+  PaystackTransferListResponse,
+} from "./paystack-transfer-types.js";
+import {
+  mapPaystackBankListResponse,
+  mapPaystackCreateRecipientResponse,
+  mapPaystackTransferResponse,
+  mapPaystackTransferListResponse,
+} from "./paystack-transfer-mapper.js";
 
 const PAYSTACK_BASE_URL = "https://api.paystack.co";
 
@@ -38,6 +56,7 @@ const PAYSTACK_CAPABILITIES: ProviderCapabilities = {
   supportsRecurring: true,
   supportsPartialRefund: true,
   supportsWebhooks: true,
+  supportsTransfers: true,
   supportedCurrencies: [
     "NGN" as Currency,
     "GHS" as Currency,
@@ -46,6 +65,12 @@ const PAYSTACK_CAPABILITIES: ProviderCapabilities = {
     "USD" as Currency,
   ],
   supportedChannels: ["card", "bank", "ussd", "qr", "mobile_money", "bank_transfer"],
+  supportedTransferCurrencies: [
+    "NGN" as Currency,
+    "GHS" as Currency,
+    "ZAR" as Currency,
+    "KES" as Currency,
+  ],
 };
 
 export class PaystackAdapter implements PaymentProvider {
@@ -293,6 +318,236 @@ export class PaystackAdapter implements PaymentProvider {
       return ok(refund);
     } catch (e) {
       return err(this.mapParseError(e, "fetch refund response"));
+    }
+  }
+
+  async listBankCodes(input: { currency: Currency }): Promise<Result<ReadonlyArray<BankCode>, PaymentError>> {
+    const correlationId = this.idGenerator.generate();
+
+    this.logger.info("listing bank codes", {
+      provider: "paystack",
+      currency: input.currency,
+      correlationId,
+    });
+
+    const result = await this.httpClient.send({
+      method: "GET",
+      url: `${this.baseUrl}/bank?currency=${encodeURIComponent(input.currency)}&perPage=100`,
+      headers: this.authHeaders(),
+      timeoutMs: this.timeoutMs,
+      correlationId,
+    });
+
+    if (!result.ok) return result;
+
+    try {
+      const response = JSON.parse(result.value.body) as PaystackBankListResponse;
+      const banks = mapPaystackBankListResponse(response);
+      return ok(banks);
+    } catch (e) {
+      return err(this.mapParseError(e, "bank list response"));
+    }
+  }
+
+  async resolveAccount(input: { accountNumber: string; bankCode: string; currency: Currency }): Promise<Result<ResolveAccountResult, PaymentError>> {
+    const correlationId = this.idGenerator.generate();
+
+    const params = new URLSearchParams({
+      account_number: input.accountNumber,
+      bank_code: input.bankCode,
+    });
+
+    this.logger.info("resolving account", {
+      provider: "paystack",
+      bankCode: input.bankCode,
+      correlationId,
+    });
+
+    const result = await this.httpClient.send({
+      method: "GET",
+      url: `${this.baseUrl}/bank/resolve?${params.toString()}`,
+      headers: this.authHeaders(),
+      timeoutMs: this.timeoutMs,
+      correlationId,
+    });
+
+    if (!result.ok) return result;
+
+    try {
+      const response = JSON.parse(result.value.body) as PaystackResolveAccountResponse;
+      if (!response.status) {
+        return err(new ProviderError(response.message, {
+          provider: this.id,
+          httpStatus: 422,
+          isRetryable: false,
+        }));
+      }
+      return ok({ accountName: response.data.account_name });
+    } catch (e) {
+      return err(this.mapParseError(e, "resolve account response"));
+    }
+  }
+
+  async createRecipient(input: CreateRecipientInput): Promise<Result<TransferRecipient, PaymentError>> {
+    const correlationId = this.idGenerator.generate();
+
+    const body: PaystackCreateRecipientRequest = {
+      type: "nuban",
+      name: input.name,
+      account_number: input.accountNumber,
+      bank_code: input.bankCode,
+      currency: input.currency,
+      metadata: input.metadata
+        ? (input.metadata as Readonly<Record<string, string | number | boolean>>)
+        : undefined,
+    };
+
+    this.logger.info("creating transfer recipient", {
+      provider: "paystack",
+      bankCode: input.bankCode,
+      correlationId,
+    });
+
+    const result = await this.httpClient.send({
+      method: "POST",
+      url: `${this.baseUrl}/transferrecipient`,
+      headers: this.authHeaders(),
+      body: JSON.stringify(body),
+      timeoutMs: this.timeoutMs,
+      correlationId,
+    });
+
+    if (!result.ok) return result;
+
+    try {
+      const response = JSON.parse(result.value.body) as PaystackCreateRecipientResponse;
+      const recipient = mapPaystackCreateRecipientResponse(response);
+      return ok(recipient);
+    } catch (e) {
+      return err(this.mapParseError(e, "create recipient response"));
+    }
+  }
+
+  async initiateTransfer(input: InitiateTransferInput): Promise<Result<Transfer, PaymentError>> {
+    const correlationId = input.correlationId ?? this.idGenerator.generate();
+
+    const body: PaystackTransferRequest = {
+      source: "balance",
+      amount: input.amount.amount,
+      recipient: input.recipientCode,
+      reference: input.reference,
+      reason: input.reason,
+      currency: input.currency,
+    };
+
+    this.logger.info("initiating transfer", {
+      provider: "paystack",
+      reference: input.reference,
+      correlationId,
+    });
+
+    const result = await this.httpClient.send({
+      method: "POST",
+      url: `${this.baseUrl}/transfer`,
+      headers: this.authHeaders(),
+      body: JSON.stringify(body),
+      timeoutMs: this.timeoutMs,
+      correlationId,
+      idempotencyKey: input.idempotencyKey,
+    });
+
+    if (!result.ok) return result;
+
+    try {
+      const response = JSON.parse(result.value.body) as PaystackTransferResponse;
+      const recipient: TransferRecipient = {
+        code: input.recipientCode,
+        name: "pending",
+        accountNumber: "pending",
+        bankCode: "pending",
+        currency: input.currency,
+        createdAt: new Date(),
+        metadata: Object.freeze({}),
+      };
+      const transfer = mapPaystackTransferResponse(response, recipient);
+      return ok(transfer);
+    } catch (e) {
+      return err(this.mapParseError(e, "initiate transfer response"));
+    }
+  }
+
+  async fetchTransfer(id: string): Promise<Result<Transfer, PaymentError>> {
+    const correlationId = this.idGenerator.generate();
+
+    this.logger.info("fetching transfer", {
+      provider: "paystack",
+      transferId: id,
+      correlationId,
+    });
+
+    const result = await this.httpClient.send({
+      method: "GET",
+      url: `${this.baseUrl}/transfer/${encodeURIComponent(id)}`,
+      headers: this.authHeaders(),
+      timeoutMs: this.timeoutMs,
+      correlationId,
+    });
+
+    if (!result.ok) return result;
+
+    try {
+      const response = JSON.parse(result.value.body) as PaystackTransferResponse;
+      const recipient: TransferRecipient = {
+        code: String(response.data.recipient),
+        name: "unknown",
+        accountNumber: "unknown",
+        bankCode: "unknown",
+        currency: response.data.currency as Currency,
+        createdAt: new Date(response.data.created_at),
+        metadata: Object.freeze({}),
+      };
+      const transfer = mapPaystackTransferResponse(response, recipient);
+      return ok(transfer);
+    } catch (e) {
+      return err(this.mapParseError(e, "fetch transfer response"));
+    }
+  }
+
+  async listTransfers(query: ListQuery): Promise<Result<Page<Transfer>, PaymentError>> {
+    const correlationId = this.idGenerator.generate();
+    const params = new URLSearchParams();
+
+    if (query.perPage) params.set("perPage", String(query.perPage));
+    if (query.page) params.set("page", String(query.page));
+    if (query.from) params.set("from", query.from.toISOString());
+    if (query.to) params.set("to", query.to.toISOString());
+
+    const queryStr = params.toString();
+    const url = `${this.baseUrl}/transfer${queryStr ? `?${queryStr}` : ""}`;
+
+    this.logger.info("listing transfers", {
+      provider: "paystack",
+      correlationId,
+      query: queryStr,
+    });
+
+    const result = await this.httpClient.send({
+      method: "GET",
+      url,
+      headers: this.authHeaders(),
+      timeoutMs: this.timeoutMs,
+      correlationId,
+    });
+
+    if (!result.ok) return result;
+
+    try {
+      const response = JSON.parse(result.value.body) as PaystackTransferListResponse;
+      const noopRecipient = () => null;
+      const page = mapPaystackTransferListResponse(response, noopRecipient);
+      return ok(page);
+    } catch (e) {
+      return err(this.mapParseError(e, "list transfers response"));
     }
   }
 

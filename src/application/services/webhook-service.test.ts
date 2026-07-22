@@ -26,6 +26,12 @@ function makeProvider(id: string): PaymentProvider {
     refund: vi.fn(),
     parseWebhook: vi.fn(),
     health: vi.fn(),
+    listBankCodes: vi.fn(),
+    resolveAccount: vi.fn(),
+    createRecipient: vi.fn(),
+    initiateTransfer: vi.fn(),
+    fetchTransfer: vi.fn(),
+    listTransfers: vi.fn(),
   };
 }
 

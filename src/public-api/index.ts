@@ -77,7 +77,18 @@ export type {
   RefundInitiated,
   RefundSucceeded,
   RefundFailed,
+  TransferInitiated,
+  TransferSucceeded,
+  TransferFailed,
+  TransferReversed,
 } from "../domain/events/payment-events.js";
 
 export type { WebhookInput } from "../application/services/webhook-service.js";
 export type { RefundCreateInput } from "../application/services/refund-service.js";
+
+export type { Transfer } from "../domain/transfer/transfer.js";
+export type { TransferStatus, TransferStatusKind } from "../domain/transfer/transfer-status.js";
+export { isFinalTransferStatus } from "../domain/transfer/transfer-status.js";
+export type { TransferRecipient } from "../domain/transfer/transfer-recipient.js";
+export type { BankCode } from "../domain/transfer/bank-code.js";
+export type { ResolveAccountResult, CreateRecipientInput, InitiateTransferInput } from "../application/ports/payment-provider.js";
