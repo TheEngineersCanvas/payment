@@ -92,3 +92,6 @@ export { isFinalTransferStatus } from "../domain/transfer/transfer-status.js";
 export type { TransferRecipient } from "../domain/transfer/transfer-recipient.js";
 export type { BankCode } from "../domain/transfer/bank-code.js";
 export type { ResolveAccountResult, CreateRecipientInput, InitiateTransferInput } from "../application/ports/payment-provider.js";
+
+export { createMockClient, MockHttpClient } from "./mock.js";
+export type { MockResponse, MockClientOptions } from "./mock.js";

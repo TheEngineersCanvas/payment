@@ -167,6 +167,30 @@ export class MyController extends WebhookController {
 }
 ```
 
+**Rate limiting** — wrap the controller with `@nestjs/throttler`:
+
+```ts
+// Disable built-in controller, register your own with @UseGuards(ThrottlerGuard)
+PaymentModule.forRoot(config, { registerWebhookController: false });
+
+@Controller("webhooks/tec")
+@UseGuards(ThrottlerGuard)
+@Throttle({ default: { limit: 30, ttl: 60_000 } })
+class ThrottledController extends WebhookController {
+  constructor(@Inject(TEC_PAYMENT_CLIENT) client: PaymentClient) {
+    super(client);
+  }
+}
+```
+
+See `examples/nestjs/throttled-webhook.ts` for the full example.
+
+**Custom webhook path:**
+
+```ts
+PaymentModule.forRoot(config, { webhookPath: "hooks/paystack" });
+```
+
 ## Supported Providers
 
 | Provider | Status |
@@ -202,6 +226,45 @@ export class MyController extends WebhookController {
 - **Domain events.** In-process pub/sub for reacting to payment state changes.
 - **Framework-agnostic.** Works with Next.js, Hono, Express, NestJS, or any Node.js framework.
 - **TypeScript-first.** Full type safety with discriminated unions and exhaustive pattern matching.
+
+## Testing
+
+The SDK ships `MockHttpClient` and `createMockClient()` for integration testing
+without hitting the live provider API:
+
+```ts
+import { createMockClient, Money, PaymentReference } from "@TheEngineersCanvas/payment";
+
+const { client, http } = createMockClient();
+
+http
+  .on("POST", "transaction/initialize", {
+    status: 200,
+    body: JSON.stringify({
+      status: true, message: "ok",
+      data: { authorization_url: "https://checkout.example.com", access_code: "ACC_mock", reference: "ref-1" },
+    }),
+  })
+  .on("GET", "transaction/verify", {
+    status: 200,
+    body: JSON.stringify({
+      status: true, message: "ok",
+      data: { id: 9999, status: "success", reference: "ref-1", amount: 500000, currency: "NGN", channel: "card",
+              customer: { id: 1, email: "test@test.com" },
+              paid_at: "2026-07-20T10:00:00.000Z", created_at: "2026-07-20T09:55:00.000Z", updated_at: "2026-07-20T10:00:00.000Z",
+              authorization: null, gateway_response: "Successful", metadata: null, fees: null, fees_split: null },
+    }),
+  });
+
+const result = await client.payments.initialize({
+  amount: Money({ amount: 500000, currency: "NGN" }),
+  reference: PaymentReference("ref-1"),
+  customer: { kind: "new", email: "test@test.com" },
+});
+```
+
+See [Migration Guide — Testing with Mocks](docs/migration-guide.md#testing-with-mocks) for full details
+including webhook testing and NestJS integration tests.
 
 ## Development
 

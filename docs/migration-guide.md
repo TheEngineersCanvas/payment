@@ -176,3 +176,143 @@ client.events.on("payment.succeeded", async (event) => {
 ```
 
 Multiple subscribers, single event source — no duplicate logic across webhook handlers.
+
+## Testing with Mocks
+
+`@TheEngineersCanvas/payment` ships `MockHttpClient` and `createMockClient()` for
+integration testing without hitting the live provider API.
+
+### Basic Mock Setup
+
+```ts
+import { createMockClient, Money, PaymentReference } from "@TheEngineersCanvas/payment";
+
+const { client, http } = createMockClient();
+
+// Seed the mock with expected responses
+http.on("POST", "transaction/initialize", {
+  status: 200,
+  body: JSON.stringify({
+    status: true,
+    message: "Authorization URL created",
+    data: {
+      authorization_url: "https://checkout.paystack.com/test",
+      access_code: "ACC_mock",
+      reference: "order-001",
+    },
+  }),
+});
+
+http.on("GET", "transaction/verify", {
+  status: 200,
+  body: JSON.stringify({
+    status: true,
+    message: "Verification successful",
+    data: {
+      id: 9999,
+      status: "success",
+      reference: "order-001",
+      amount: 500000,
+      currency: "NGN",
+      channel: "card",
+      paid_at: "2026-07-20T10:00:00.000Z",
+      created_at: "2026-07-20T09:55:00.000Z",
+      updated_at: "2026-07-20T10:00:00.000Z",
+      customer: { id: 1, email: "test@example.com" },
+      authorization: null,
+      gateway_response: "Successful",
+      metadata: null,
+      fees: 7500,
+      fees_split: null,
+    },
+  }),
+});
+
+// Use the client normally — it hits the mock instead of Paystack
+const result = await client.payments.initialize({
+  amount: Money({ amount: 500000, currency: "NGN" }),
+  reference: PaymentReference("order-001"),
+  customer: { kind: "new", email: "test@example.com" },
+});
+
+expect(result.ok).toBe(true);
+```
+
+### Inspecting Requests
+
+```ts
+// Verify the mock received expected requests
+const requests = http.getRequests();
+expect(requests).toHaveLength(1);
+expect(requests[0].method).toBe("POST");
+expect(requests[0].url).toContain("transaction/initialize");
+
+// Reset between tests
+http.reset();
+```
+
+### Webhook Testing
+
+```ts
+import { createHmac } from "crypto";
+
+const secret = "whsec_mock";
+const { client } = createMockClient({ webhookSecret: secret });
+
+const payload = JSON.stringify({
+  event: "charge.success",
+  data: {
+    id: 9999,
+    status: "success",
+    reference: "order-001",
+    amount: 500000,
+    currency: "NGN",
+    channel: "card",
+    customer: { id: 1, email: "test@example.com" },
+    paid_at: "2026-07-20T10:00:00.000Z",
+    created_at: "2026-07-20T09:55:00.000Z",
+    updated_at: "2026-07-20T10:00:00.000Z",
+    authorization: null,
+    gateway_response: "Successful",
+    metadata: null,
+    fees: null,
+    fees_split: null,
+  },
+});
+
+const signature = createHmac("sha512", secret).update(payload).digest("hex");
+
+const result = await client.webhooks.receive({
+  rawBody: payload,
+  signature,
+});
+
+expect(result.ok).toBe(true);
+expect(result.value.type).toBe("payment.succeeded");
+```
+
+### NestJS Integration Tests
+
+```ts
+import { Test } from "@nestjs/testing";
+import { createMockClient } from "@TheEngineersCanvas/payment";
+
+const { client, http } = createMockClient();
+
+const module = await Test.createTestingModule({
+  providers: [
+    { provide: "PAYMENT_CLIENT", useValue: client },
+    // ... your service that depends on PAYMENT_CLIENT
+  ],
+}).compile();
+```
+
+### Chaining Responses
+
+```ts
+http
+  .on("POST", "initialize", { status: 200, body: JSON.stringify({ ... }) })
+  .on("GET", "verify", { status: 200, body: JSON.stringify({ ... }) });
+```
+
+The `on()` method returns `this` for chaining.

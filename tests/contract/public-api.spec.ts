@@ -91,11 +91,15 @@ import {
   type TransferSucceeded,
   type TransferFailed,
   type TransferReversed,
+  createMockClient,
+  MockHttpClient,
+  type MockResponse,
+  type MockClientOptions,
 } from "../../src/public-api/index.js";
 
 describe("public-api barrel exports", () => {
   it("exports all documented value exports", () => {
-    expect(VERSION).toBe("0.1.0-RC4");
+    expect(VERSION).toBe("0.1.0-RC5");
     expect(typeof createPaymentClient).toBe("function");
     expect(typeof Money).toBe("function");
     expect(typeof MinorUnits).toBe("function");
@@ -127,6 +131,8 @@ describe("public-api barrel exports", () => {
     expect(typeof isFinalRefundStatus).toBe("function");
     expect(typeof isFinalTransferStatus).toBe("function");
     expect(typeof RefundReason).toBe("function");
+    expect(typeof createMockClient).toBe("function");
+    expect(typeof MockHttpClient).toBe("function");
   });
 
   it("exports all documented type-only members", () => {
@@ -189,6 +195,8 @@ describe("public-api barrel exports", () => {
       TransferSucceeded: null as TransferSucceeded | null,
       TransferFailed: null as TransferFailed | null,
       TransferReversed: null as TransferReversed | null,
+      MockResponse: null as MockResponse | null,
+      MockClientOptions: null as MockClientOptions | null,
     };
 
     for (const name of Object.keys(types)) {
@@ -304,5 +312,22 @@ describe("public-api barrel exports", () => {
     expect(isFinalTransferStatus({ kind: "reversed", reversedAt: new Date() })).toBe(true);
     expect(isFinalTransferStatus({ kind: "pending" })).toBe(false);
     expect(isFinalTransferStatus({ kind: "processing" })).toBe(false);
+  });
+
+  it("createMockClient returns a seeded client with MockHttpClient", async () => {
+    const { client, http } = createMockClient();
+
+    http.on("GET", "transaction", {
+      status: 200,
+      body: JSON.stringify({
+        status: true,
+        message: "Transactions retrieved",
+        data: [],
+        meta: { total: 0, skipped: 0, perPage: 50, page: 1, pageCount: 0 },
+      }),
+    });
+
+    const result = await client.payments.list({});
+    expect(result.ok).toBe(true);
   });
 });

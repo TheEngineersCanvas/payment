@@ -1,6 +1,6 @@
 {
   "name": "@TheEngineersCanvas/payment",
-  "version": "0.1.0-RC4",
+  "version": "0.1.0-RC5",
   "description": "Framework-agnostic payment abstraction SDK By TheEngineersCanvas",
   "license": "UNLICENSED",
   "author": "TheEngineersCanvas",
